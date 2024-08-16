@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from .results import GazeResultContainer
 
+
 def draw_gaze(a,b,c,d,image_in, pitchyaw, thickness=2, color=(255, 255, 0),sclae=2.0):
     """Draw gaze angle on given image with a given eye positions."""
     image_out = image_in
@@ -17,8 +18,9 @@ def draw_gaze(a,b,c,d,image_in, pitchyaw, thickness=2, color=(255, 255, 0),sclae
                    thickness, cv2.LINE_AA, tipLength=0.18)
     return image_out
 
+
 def draw_bbox(frame: np.ndarray, bbox: np.ndarray):
-    
+
     x_min=int(bbox[0])
     if x_min < 0:
         x_min = 0
@@ -32,6 +34,7 @@ def draw_bbox(frame: np.ndarray, bbox: np.ndarray):
 
     return frame
 
+
 def render(frame: np.ndarray, results: GazeResultContainer):
 
     # Draw bounding boxes
@@ -44,7 +47,7 @@ def render(frame: np.ndarray, results: GazeResultContainer):
         bbox = results.bboxes[i]
         pitch = results.pitch[i]
         yaw = results.yaw[i]
-        
+
         # Extract safe min and max of x,y
         x_min=int(bbox[0])
         if x_min < 0:
