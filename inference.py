@@ -3,6 +3,7 @@ import argparse
 import pathlib
 import cv2
 import numpy as np
+import time
 import torch
 import torchvision
 
@@ -73,6 +74,10 @@ def process_webcam(cam_id, gaze_estimator):
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
 
+    # FPS calculation variables
+    frame_count = 0
+    start_time = time.time()
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -86,9 +91,54 @@ def process_webcam(cam_id, gaze_estimator):
         # Visualize output
         output_frame = render(frame, results)
 
+        # Calculate and display FPS
+        frame_count += 1
+        elapsed_time = time.time() - start_time
+        fps = frame_count / elapsed_time
+        cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+
         cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
 
         # Exit on pressing 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+def process_video(video_path, gaze_estimator):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"Error: Could not open video file {video_path}")
+        return
+
+    # FPS calculation variables
+    frame_count = 0
+    start_time = time.time()
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            print("Error: Failed to capture frame")
+            break
+
+        # Perform gaze estimation
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = gaze_estimator.predict(frame)
+
+        # Visualize output
+        output_frame = render(frame, results)
+
+        # Calculate and display FPS
+        frame_count += 1
+        elapsed_time = time.time() - start_time
+        fps = frame_count / elapsed_time
+        cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -119,24 +169,7 @@ if __name__ == "__main__":
 
     elif args.video_path:
         # Process video file
-        cap = cv2.VideoCapture(args.video_path)
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            # Perform gaze estimation
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = gaze_estimator.predict(frame)
-
-            # Visualize output
-            output_frame = render(frame, results)
-            cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-        cap.release()
-        cv2.destroyAllWindows()
+        process_video(args.video_path, gaze_estimator)
 
     else:
         # print(args.cam_id)
