@@ -98,7 +98,11 @@ class GazeEstimator:
                     landmarks.append(face['kps'])
                     scores.append(face['score'])
 
-                pitch, yaw = self.predict_gaze(np.stack(face_imgs))
+                if face_imgs:
+                    pitch, yaw = self.predict_gaze(np.stack(face_imgs))
+                else:
+                    pitch = np.empty((0, 1))
+                    yaw = np.empty((0, 1))
             else:
                 pitch = np.empty((0, 1))
                 yaw = np.empty((0, 1))
