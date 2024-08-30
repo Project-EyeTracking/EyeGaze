@@ -2,14 +2,21 @@ import cv2
 import numpy as np
 import torch
 import torch.nn as nn
-
 from batch_face import RetinaFace, SixDRep
 from torchvision import transforms
+
 from .results import GazeResultContainer
 
 
 class GazeEstimator:
-    def __init__(self, model, device, include_detector=True, confidence_threshold=0.5, include_head_pose=True):
+    def __init__(
+        self,
+        model,
+        device,
+        include_detector=True,
+        confidence_threshold=0.5,
+        include_head_pose=True,
+    ):
         self.model = model
         self.device = device
         self.include_detector = include_detector
@@ -17,24 +24,23 @@ class GazeEstimator:
         self.include_head_pose = include_head_pose
         self.head_pose_estimator = None
         if self.include_head_pose:
-            if device.type == 'cpu' or device.type == "mps":
+            if device.type == "cpu" or device.type == "mps":
                 self.head_pose_estimator = SixDRep(gpu_id=-1)
             else:
                 self.head_pose_estimator = SixDRep(gpu_id=device.index)
 
-        self.transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.Resize((448, 448)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-        ])
+        self.transform = transforms.Compose(
+            [
+                transforms.ToPILImage(),
+                transforms.Resize((448, 448)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
         self.detector = None
         if self.include_detector:
-            if device.type == 'cpu' or device.type == "mps":
+            if device.type == "cpu" or device.type == "mps":
                 self.detector = RetinaFace()
             else:
                 self.detector = RetinaFace(gpu_id=device.index)
@@ -87,28 +93,36 @@ class GazeEstimator:
         resize = 1
 
         if self.include_detector:
-            faces = self.detector(image, threshold=self.confidence_threshold, resize=resize, max_size=max_size, return_dict=True)
+            faces = self.detector(
+                image,
+                threshold=self.confidence_threshold,
+                resize=resize,
+                max_size=max_size,
+                return_dict=True,
+            )
             if faces:
                 if self.include_head_pose and self.head_pose_estimator:
-                    head_poses = self.head_pose_estimator([faces], [image], update_dict=True, input_face_type='dict')
+                    head_poses = self.head_pose_estimator(
+                        [faces], [image], update_dict=True, input_face_type="dict"
+                    )
                 for face in faces:
-                    if face['score'] < self.confidence_threshold:
+                    if face["score"] < self.confidence_threshold:
                         continue
 
-                    x_min = max(int(face['box'][0]), 0)
-                    y_min = max(int(face['box'][1]), 0)
-                    x_max = int(face['box'][2])
-                    y_max = int(face['box'][3])
+                    x_min = max(int(face["box"][0]), 0)
+                    y_min = max(int(face["box"][1]), 0)
+                    x_max = int(face["box"][2])
+                    y_max = int(face["box"][3])
 
                     img = image[y_min:y_max, x_min:x_max]
                     img = cv2.resize(img, (224, 224))
                     face_imgs.append(img)
 
-                    bboxes.append(face['box'])
-                    landmarks.append(face['kps'])
-                    scores.append(face['score'])
+                    bboxes.append(face["box"])
+                    landmarks.append(face["kps"])
+                    scores.append(face["score"])
                     if self.include_head_pose and self.head_pose_estimator:
-                        head_orientations.append(face['head_pose'])
+                        head_orientations.append(face["head_pose"])
 
                 if face_imgs:
                     pitch, yaw = self.predict_gaze(np.stack(face_imgs))
@@ -125,7 +139,7 @@ class GazeEstimator:
             bboxes=np.array(bboxes) if bboxes else None,
             landmarks=np.array(landmarks) if landmarks else None,
             scores=np.array(scores) if scores else None,
-            head_orientations=np.array(head_orientations) if head_orientations else None
+            head_orientations=np.array(head_orientations) if head_orientations else None,
         )
 
         return results

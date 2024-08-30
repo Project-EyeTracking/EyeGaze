@@ -1,6 +1,6 @@
 # EyeGaze
 
-Usage
+### Usage
 
 ```python
 # To run inference on a image
@@ -18,3 +18,11 @@ python inference.py --cam 0
 ```
 
 Download the pre-trained gaze estimation models from [here](https://drive.google.com/drive/folders/17p6ORr-JQJcw-eYtG2WGNiuS_qVKwdWd?usp=sharing) and Store it to *models/*.
+
+### Results
+
+Gaze estimation results on a sample image.
+![alt text](assets/output_image_gaze.png)
+
+Head pose estimation results on a sample image.
+![alt text](assets/output_image_head_orientation.png)

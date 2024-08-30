@@ -1,5 +1,5 @@
 import cv2
-from batch_face import drawLandmark_multiple, LandmarkPredictor, RetinaFace
+from batch_face import LandmarkPredictor, RetinaFace, drawLandmark_multiple
 
 if __name__ == "__main__":
     predictor = LandmarkPredictor(gpu_id=-1)
@@ -17,7 +17,9 @@ if __name__ == "__main__":
         raise ValueError("No face detected in the image")
 
     # the first input for the predictor is a list of face boxes. [[x1,y1,x2,y2]]
-    results = predictor(faces, img, from_fd=True) # from_fd=True to convert results from our detection results to simple boxes
+    results = predictor(
+        faces, img, from_fd=True
+    )  # from_fd=True to convert results from our detection results to simple boxes
 
     for face, landmarks in zip(faces, results):
         img = drawLandmark_multiple(img, face[0], landmarks)

@@ -1,15 +1,15 @@
-import os
 import argparse
+import os
 import pathlib
+import time
+
 import cv2
 import numpy as np
-import time
 import torch
 import torchvision
-
 from PIL import Image
-from l2cs import L2CS, GazeEstimator, render
 
+from l2cs import L2CS, GazeEstimator, render
 
 CWD = pathlib.Path.cwd()
 
@@ -17,7 +17,7 @@ CWD = pathlib.Path.cwd()
 def select_device():
     if torch.backends.mps.is_available() and torch.backends.mps.is_built():
         # MPS is available for Apple Silicon (macOS)
-        os.environ['PYTORCH_MPS_SUPPORT'] = '1'
+        os.environ["PYTORCH_MPS_SUPPORT"] = "1"
         device = torch.device("mps")
         print("Using MPS (Apple Silicon)")
     elif torch.cuda.is_available():
@@ -44,12 +44,32 @@ def load_model(model_path, device):
 
 def parse_args():
     """Parse input arguments."""
-    parser = argparse.ArgumentParser(description='Gaze evaluation using model pretrained with L2CS-Net on Gaze360.')
-    parser.add_argument('--device', dest='device', default="cpu", type=str, help='Device to run model: cpu or cuda or mps')
-    parser.add_argument('--cam', dest='cam_id', default=0, type=int, help='Camera device id to use [0]')
-    parser.add_argument('--video_path', dest='video_path', type=str, help='Input video path (optional)')
-    parser.add_argument("--image_path", dest='image_path', type=str, help="Path to the input eye image (optional)")
-    parser.add_argument("--model_path", dest='model_path', default='models/L2CSNet_gaze360.pkl', type=str, help="Path to the trained model (.pth file)")
+    parser = argparse.ArgumentParser(
+        description="Gaze evaluation using model pretrained with L2CS-Net on Gaze360."
+    )
+    parser.add_argument(
+        "--device",
+        dest="device",
+        default="cpu",
+        type=str,
+        help="Device to run model: cpu or cuda or mps",
+    )
+    parser.add_argument(
+        "--cam", dest="cam_id", default=0, type=int, help="Camera device id to use [0]"
+    )
+    parser.add_argument(
+        "--video_path", dest="video_path", type=str, help="Input video path (optional)"
+    )
+    parser.add_argument(
+        "--image_path", dest="image_path", type=str, help="Path to the input eye image (optional)"
+    )
+    parser.add_argument(
+        "--model_path",
+        dest="model_path",
+        default="models/L2CSNet_gaze360.pkl",
+        type=str,
+        help="Path to the trained model (.pth file)",
+    )
     args = parser.parse_args()
     return args
 
@@ -61,7 +81,7 @@ def process_image(image, gaze_estimator, draw_head_pose=False, draw_gaze=True):
     # Perform gaze estimation
     results = gaze_estimator.predict(image_np)
 
-    print(f'Predicted gaze angles (pitch, yaw): {results.pitch, results.yaw}')
+    print(f"Predicted gaze angles (pitch, yaw): {results.pitch, results.yaw}")
 
     frame = image_np.copy()
 
@@ -106,7 +126,9 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
 
             if draw_head_pose:
                 for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
-                    gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
+                    gaze_estimator.head_pose_estimator.plot_pose_cube(
+                        frame, bbox, **head_orientation
+                    )
 
             # Calculate and display FPS
             frame_time = time.time() - frame_start_time
@@ -117,8 +139,18 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
                 frame_times.pop(0)
             fps = len(frame_times) / sum(frame_times)
 
-            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(
+                frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+            )
+            cv2.putText(
+                frame,
+                f"No Gaze Frames: {no_gaze_count}",
+                (10, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 0),
+                2,
+            )
 
             cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -127,7 +159,7 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
             no_gaze_count += 1
 
         # Exit on pressing 'q'
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
@@ -164,7 +196,9 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
 
             if draw_head_pose:
                 for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
-                    gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
+                    gaze_estimator.head_pose_estimator.plot_pose_cube(
+                        frame, bbox, **head_orientation
+                    )
 
             # Calculate and display FPS
             frame_time = time.time() - frame_start_time
@@ -175,8 +209,18 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
                 frame_times.pop(0)
             fps = len(frame_times) / sum(frame_times)
 
-            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(
+                frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+            )
+            cv2.putText(
+                frame,
+                f"No Gaze Frames: {no_gaze_count}",
+                (10, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 0),
+                2,
+            )
 
             cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
@@ -185,7 +229,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
             no_gaze_count += 1
 
         # Exit on pressing 'q'
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
@@ -194,7 +238,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
 
 if __name__ == "__main__":
     args = parse_args()
-    model_path = CWD / 'models' / 'L2CSNet_gaze360.pkl'
+    model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
     # image_path = CWD / 'assets' / 'input_image.png'
 
     device = select_device()
@@ -203,18 +247,20 @@ if __name__ == "__main__":
     model = load_model(model_path, device)
 
     # Create GazeEstimator instance
-    gaze_estimator = GazeEstimator(model=model,
-                                   device=device,
-                                   include_detector=True,
-                                   confidence_threshold=0.9,
-                                   include_head_pose=True)
+    gaze_estimator = GazeEstimator(
+        model=model,
+        device=device,
+        include_detector=True,
+        confidence_threshold=0.9,
+        include_head_pose=True,
+    )
 
     if args.image_path:
         # Load and prepare the image
-        image = Image.open(args.image_path).convert('RGB')
-        frame, _ = process_image(image, gaze_estimator,
-                                 draw_head_pose=gaze_estimator.include_head_pose,
-                                 draw_gaze=False)
+        image = Image.open(args.image_path).convert("RGB")
+        frame, _ = process_image(
+            image, gaze_estimator, draw_head_pose=gaze_estimator.include_head_pose, draw_gaze=False
+        )
 
         cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         cv2.waitKey(0)
@@ -222,12 +268,18 @@ if __name__ == "__main__":
 
     elif args.video_path:
         # Process video file
-        process_video(args.video_path, gaze_estimator,
-                      draw_head_pose=gaze_estimator.include_head_pose,
-                      draw_gaze=False)
+        process_video(
+            args.video_path,
+            gaze_estimator,
+            draw_head_pose=gaze_estimator.include_head_pose,
+            draw_gaze=False,
+        )
     else:
         # print(args.cam_id)
         # If neither image nor video is provided, use webcam
-        process_webcam(args.cam_id, gaze_estimator,
-                       draw_head_pose=gaze_estimator.include_head_pose,
-                       draw_gaze=False)
+        process_webcam(
+            args.cam_id,
+            gaze_estimator,
+            draw_head_pose=gaze_estimator.include_head_pose,
+            draw_gaze=False,
+        )
