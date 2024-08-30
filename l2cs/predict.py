@@ -80,7 +80,7 @@ class GazeEstimator:
 
         if self.include_detector:
             faces = self.detector(image, threshold=self.confidence_threshold, resize=resize, max_size=max_size, return_dict=True)
-            if faces is not None:
+            if faces:
                 for face in faces:
                     if face['score'] < self.confidence_threshold:
                         continue
@@ -101,21 +101,18 @@ class GazeEstimator:
                 if face_imgs:
                     pitch, yaw = self.predict_gaze(np.stack(face_imgs))
                 else:
-                    pitch = np.empty((0, 1))
-                    yaw = np.empty((0, 1))
+                    pitch = yaw = np.empty((0, 1))
             else:
-                pitch = np.empty((0, 1))
-                yaw = np.empty((0, 1))
+                pitch = yaw = np.empty((0, 1))
         else:
-            pitch = np.empty((0, 1))
-            yaw = np.empty((0, 1))
+            pitch = yaw = np.empty((0, 1))
 
         results = GazeResultContainer(
             pitch=pitch,
             yaw=yaw,
-            bboxes=np.stack(bboxes),
-            landmarks=np.stack(landmarks),
-            scores=np.stack(scores)
+            bboxes=np.array(bboxes) if bboxes else None,
+            landmarks=np.array(landmarks) if landmarks else None,
+            scores=np.array(scores) if scores else None
         )
 
         return results

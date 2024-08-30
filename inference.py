@@ -65,7 +65,7 @@ def process_image(image, gaze_estimator):
 
     # Visualize output
     frame = render(image_np, results)
-    return frame
+    return frame, results
 
 
 def process_webcam(cam_id, gaze_estimator):
@@ -75,10 +75,12 @@ def process_webcam(cam_id, gaze_estimator):
         return
 
     # FPS calculation variables
-    frame_count = 0
-    start_time = time.time()
+    frame_times = []
+    fps = 0
+    no_gaze_count = 0
 
     while True:
+        frame_start_time = time.time()
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture frame")
@@ -88,17 +90,26 @@ def process_webcam(cam_id, gaze_estimator):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = gaze_estimator.predict(frame)
 
-        # Visualize output
-        output_frame = render(frame, results)
+        # Check if results.pitch is not empty
+        if results.pitch is not None and len(results.pitch) > 0:
+            # Visualize output
+            output_frame = render(frame, results)
 
-        # Calculate and display FPS
-        frame_count += 1
-        elapsed_time = time.time() - start_time
-        fps = frame_count / elapsed_time
-        cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Calculate and display FPS
+            frame_time = time.time() - frame_start_time
+            frame_times.append(frame_time)
+            if len(frame_times) > 30:  # Calculate FPS over last 30 frames
+                frame_times.pop(0)
+            fps = len(frame_times) / sum(frame_times)
 
+            cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(output_frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+            cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+
+        else:
+            print("No gaze detected in this frame")
+            no_gaze_count += 1
 
         # Exit on pressing 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -115,10 +126,12 @@ def process_video(video_path, gaze_estimator):
         return
 
     # FPS calculation variables
-    frame_count = 0
-    start_time = time.time()
+    frame_times = []
+    fps = 0
+    no_gaze_count = 0
 
     while cap.isOpened():
+        frame_start_time = time.time()
         ret, frame = cap.read()
         if not ret:
             print("Error: Failed to capture frame")
@@ -128,17 +141,28 @@ def process_video(video_path, gaze_estimator):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = gaze_estimator.predict(frame)
 
-        # Visualize output
-        output_frame = render(frame, results)
+        # Check if results.pitch is not empty
+        if results.pitch is not None and len(results.pitch) > 0:
+            # Visualize output
+            output_frame = render(frame, results)
 
-        # Calculate and display FPS
-        frame_count += 1
-        elapsed_time = time.time() - start_time
-        fps = frame_count / elapsed_time
-        cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Calculate and display FPS
+            frame_time = time.time() - frame_start_time
+            frame_times.append(frame_time)
+            if len(frame_times) > 30:  # Calculate FPS over last 30 frames
+                frame_times.pop(0)
+            fps = len(frame_times) / sum(frame_times)
 
-        cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+            cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(output_frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
+            cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+
+        else:
+            print("No gaze detected in this frame")
+            no_gaze_count += 1
+
+        # Exit on pressing 'q'
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -162,7 +186,7 @@ if __name__ == "__main__":
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert('RGB')
-        frame = process_image(image, gaze_estimator)
+        frame, _ = process_image(image, gaze_estimator)
         cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
