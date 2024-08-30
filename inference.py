@@ -64,7 +64,7 @@ def process_image(image, gaze_estimator):
     print(f'Predicted gaze angles (pitch, yaw): {results.pitch, results.yaw}')
 
     # Visualize output
-    frame = render(image_np, results)
+    frame = render(image_np, results, draw_landmarks=True)
     return frame, results
 
 

@@ -35,33 +35,35 @@ def draw_bbox(frame: np.ndarray, bbox: np.ndarray):
     return frame
 
 
-def render(frame: np.ndarray, results: GazeResultContainer):
-
+def render(frame: np.ndarray, results: GazeResultContainer, draw_landmarks: bool = False):
     # Draw bounding boxes
     for bbox in results.bboxes:
         frame = draw_bbox(frame, bbox)
 
-    # Draw Gaze
+    # Draw Gaze and Landmarks
     for i in range(results.pitch.shape[0]):
-
         bbox = results.bboxes[i]
         pitch = results.pitch[i]
         yaw = results.yaw[i]
 
         # Extract safe min and max of x,y
-        x_min=int(bbox[0])
-        if x_min < 0:
-            x_min = 0
-        y_min=int(bbox[1])
-        if y_min < 0:
-            y_min = 0
-        x_max=int(bbox[2])
-        y_max=int(bbox[3])
+        x_min = max(int(bbox[0]), 0)
+        y_min = max(int(bbox[1]), 0)
+        x_max = int(bbox[2])
+        y_max = int(bbox[3])
 
         # Compute sizes
         bbox_width = x_max - x_min
         bbox_height = y_max - y_min
 
-        draw_gaze(x_min,y_min,bbox_width, bbox_height,frame,(pitch,yaw),color=(0,0,255))
+        # Draw gaze
+        draw_gaze(x_min, y_min, bbox_width, bbox_height, frame, (pitch, yaw), color=(0, 0, 255))
+
+        # Draw landmarks if enabled
+        if draw_landmarks and hasattr(results, 'landmarks'):
+            kps = results.landmarks[i]
+            for j in range(5):  # Assuming 5 landmarks
+                x, y = int(kps[j][0]), int(kps[j][1])
+                cv2.circle(frame, (x, y), 2, (0, 255, 0), 2)
 
     return frame
