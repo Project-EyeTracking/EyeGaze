@@ -35,10 +35,11 @@ def draw_bbox(frame: np.ndarray, bbox: np.ndarray):
     return frame
 
 
-def render(frame: np.ndarray, results: GazeResultContainer, draw_landmarks: bool = False):
-    # Draw bounding boxes
-    for bbox in results.bboxes:
-        frame = draw_bbox(frame, bbox)
+def render(frame: np.ndarray, results: GazeResultContainer, draw_landmarks: bool = False, draw_bboxes: bool = True):
+    # Draw bounding boxes if enabled
+    if draw_bboxes:
+        for bbox in results.bboxes:
+            frame = draw_bbox(frame, bbox)
 
     # Draw Gaze and Landmarks
     for i in range(results.pitch.shape[0]):

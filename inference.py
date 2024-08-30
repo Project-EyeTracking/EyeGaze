@@ -54,7 +54,7 @@ def parse_args():
     return args
 
 
-def process_image(image, gaze_estimator):
+def process_image(image, gaze_estimator, draw_head_pose=False, draw_gaze=True):
     # Convert PIL Image to NumPy array
     image_np = np.array(image)
 
@@ -63,12 +63,20 @@ def process_image(image, gaze_estimator):
 
     print(f'Predicted gaze angles (pitch, yaw): {results.pitch, results.yaw}')
 
-    # Visualize output
-    frame = render(image_np, results, draw_landmarks=True)
+    frame = image_np.copy()
+
+    # Visualize output based on arguments
+    if draw_gaze:
+        frame = render(frame, results, draw_landmarks=True, draw_bboxes=True)
+
+    if draw_head_pose:
+        for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
+            gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
+
     return frame, results
 
 
-def process_webcam(cam_id, gaze_estimator):
+def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
@@ -93,19 +101,26 @@ def process_webcam(cam_id, gaze_estimator):
         # Check if results.pitch is not empty
         if results.pitch is not None and len(results.pitch) > 0:
             # Visualize output
-            output_frame = render(frame, results)
+            if draw_gaze:
+                frame = render(frame, results, draw_landmarks=True, draw_bboxes=True)
+
+            if draw_head_pose:
+                for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
+                    gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
 
             # Calculate and display FPS
             frame_time = time.time() - frame_start_time
             frame_times.append(frame_time)
-            if len(frame_times) > 30:  # Calculate FPS over last 30 frames
+
+            # Calculate FPS over last 30 frames
+            if len(frame_times) > 30:
                 frame_times.pop(0)
             fps = len(frame_times) / sum(frame_times)
 
-            cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(output_frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+            cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
         else:
             print("No gaze detected in this frame")
@@ -119,7 +134,7 @@ def process_webcam(cam_id, gaze_estimator):
     cv2.destroyAllWindows()
 
 
-def process_video(video_path, gaze_estimator):
+def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
@@ -144,19 +159,26 @@ def process_video(video_path, gaze_estimator):
         # Check if results.pitch is not empty
         if results.pitch is not None and len(results.pitch) > 0:
             # Visualize output
-            output_frame = render(frame, results)
+            if draw_gaze:
+                frame = render(frame, results, draw_landmarks=True, draw_bboxes=True)
+
+            if draw_head_pose:
+                for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
+                    gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
 
             # Calculate and display FPS
             frame_time = time.time() - frame_start_time
             frame_times.append(frame_time)
-            if len(frame_times) > 30:  # Calculate FPS over last 30 frames
+
+            # Calculate FPS over last 30 frames
+            if len(frame_times) > 30:
                 frame_times.pop(0)
             fps = len(frame_times) / sum(frame_times)
 
-            cv2.putText(output_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(output_frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame, f"No Gaze Frames: {no_gaze_count}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            cv2.imshow("Gaze Estimation", cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR))
+            cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
         else:
             print("No gaze detected in this frame")
@@ -181,21 +203,31 @@ if __name__ == "__main__":
     model = load_model(model_path, device)
 
     # Create GazeEstimator instance
-    gaze_estimator = GazeEstimator(model=model, device=device, include_detector=True, confidence_threshold=0.9)
+    gaze_estimator = GazeEstimator(model=model,
+                                   device=device,
+                                   include_detector=True,
+                                   confidence_threshold=0.9,
+                                   include_head_pose=True)
 
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert('RGB')
-        frame, _ = process_image(image, gaze_estimator)
+        frame, _ = process_image(image, gaze_estimator,
+                                 draw_head_pose=gaze_estimator.include_head_pose,
+                                 draw_gaze=False)
+
         cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
     elif args.video_path:
         # Process video file
-        process_video(args.video_path, gaze_estimator)
-
+        process_video(args.video_path, gaze_estimator,
+                      draw_head_pose=gaze_estimator.include_head_pose,
+                      draw_gaze=False)
     else:
         # print(args.cam_id)
         # If neither image nor video is provided, use webcam
-        process_webcam(args.cam_id, gaze_estimator)
+        process_webcam(args.cam_id, gaze_estimator,
+                       draw_head_pose=gaze_estimator.include_head_pose,
+                       draw_gaze=False)

@@ -10,3 +10,4 @@ class GazeResultContainer:
     bboxes: np.ndarray
     landmarks: np.ndarray
     scores: np.ndarray
+    head_orientations: np.ndarray
