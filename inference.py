@@ -70,11 +70,20 @@ def parse_args():
         type=str,
         help="Path to the trained model (.pth file)",
     )
+    parser.add_argument(
+        "--output",
+        dest="output",
+        choices=["visualize", "save", "both", "none"],
+        default="visualize",
+        help="Output mode: visualize, save, both, or none (default: visualize)",
+    )
     args = parser.parse_args()
     return args
 
 
-def process_image(image, gaze_estimator, draw_head_pose=False, draw_gaze=True):
+def process_image(
+    image, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+):
     # Convert PIL Image to NumPy array
     image_np = np.array(image)
 
@@ -93,14 +102,41 @@ def process_image(image, gaze_estimator, draw_head_pose=False, draw_gaze=True):
         for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
             gaze_estimator.head_pose_estimator.plot_pose_cube(frame, bbox, **head_orientation)
 
+    if output_mode in ["save", "both"]:
+        output_dir = CWD / "output"
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"processed_image_{int(time.time())}.png"
+        cv2.imwrite(str(output_path), cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        print(f"Processed image saved to: {output_path}")
+
+    if output_mode in ["visualize", "both"]:
+        cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
     return frame, results
 
 
-def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True):
+def process_webcam(
+    cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
+
+    # # Get video properties
+    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    # fps = 30  # Set output FPS to 30
+
+    # out = None
+    # if output_mode in ["save", "both"]:
+    #     output_dir = CWD / "output"
+    #     output_dir.mkdir(exist_ok=True)
+    #     output_path = output_dir / f"webcam_output_{int(time.time())}.mp4"
+    #     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    #     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # FPS calculation variables
     frame_times = []
@@ -122,7 +158,7 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
         if results.pitch is not None and len(results.pitch) > 0:
             # Visualize output
             if draw_gaze:
-                frame = render(frame, results, draw_landmarks=True, draw_bboxes=True)
+                frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
 
             if draw_head_pose:
                 for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
@@ -154,6 +190,12 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
 
             cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
+            # if out:
+            #     out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+            # if output_mode in ["visualize", "both"]:
+            #     cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
         else:
             print("No gaze detected in this frame")
             no_gaze_count += 1
@@ -161,16 +203,38 @@ def process_webcam(cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True)
         # Exit on pressing 'q'
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
+        # if output_mode != "none" and cv2.waitKey(1) & 0xFF == ord("q"):
+        #     break
 
     cap.release()
     cv2.destroyAllWindows()
+    # if out:
+    #     out.release()
+    #     print(f"Webcam output saved to: {output_path}")
+    # if output_mode in ["visualize", "both"]:
+    #     cv2.destroyAllWindows()
 
 
-def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True):
+def process_video(
+    video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
         return
+
+    # Get video properties
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = 30  # Set output FPS to 30
+
+    out = None
+    if output_mode in ["save", "both"]:
+        output_dir = CWD / "output"
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"processed_video_{int(time.time())}.mp4"
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # FPS calculation variables
     frame_times = []
@@ -192,7 +256,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
         if results.pitch is not None and len(results.pitch) > 0:
             # Visualize output
             if draw_gaze:
-                frame = render(frame, results, draw_landmarks=True, draw_bboxes=True)
+                frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
 
             if draw_head_pose:
                 for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
@@ -222,18 +286,26 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
                 2,
             )
 
-            cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            if out:
+                out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+            if output_mode in ["visualize", "both"]:
+                cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
         else:
             print("No gaze detected in this frame")
             no_gaze_count += 1
 
         # Exit on pressing 'q'
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        if output_mode != "none" and cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
-    cv2.destroyAllWindows()
+    if out:
+        out.release()
+        print(f"Processed video saved to: {output_path}")
+    if output_mode in ["visualize", "both"]:
+        cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
@@ -259,20 +331,17 @@ if __name__ == "__main__":
         # Load and prepare the image
         image = Image.open(args.image_path).convert("RGB")
         frame, _ = process_image(
-            image, gaze_estimator, draw_head_pose=gaze_estimator.include_head_pose, draw_gaze=False
+            image, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode=args.output
         )
-
-        cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
     elif args.video_path:
         # Process video file
         process_video(
             args.video_path,
             gaze_estimator,
-            draw_head_pose=gaze_estimator.include_head_pose,
-            draw_gaze=False,
+            draw_head_pose=False,
+            draw_gaze=True,
+            output_mode=args.output,
         )
     else:
         # print(args.cam_id)
@@ -280,6 +349,7 @@ if __name__ == "__main__":
         process_webcam(
             args.cam_id,
             gaze_estimator,
-            draw_head_pose=gaze_estimator.include_head_pose,
-            draw_gaze=False,
+            draw_head_pose=False,
+            draw_gaze=True,
+            output_mode=args.output,
         )

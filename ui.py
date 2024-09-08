@@ -149,6 +149,7 @@ def main():
                         gaze_estimator,
                         draw_head_pose=gaze_estimator.include_head_pose,
                         draw_gaze=True,
+                        output_mode="none",
                     )
                     st.image(frame, caption="Gaze Estimation Result", use_column_width=True)
                     for i, (pitch, yaw) in enumerate(zip(results.pitch, results.yaw)):
