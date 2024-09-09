@@ -317,6 +317,7 @@ if __name__ == "__main__":
 
     # Load the model
     model = load_model(model_path, device)
+    print(f"{device=}")
 
     # Create GazeEstimator instance
     gaze_estimator = GazeEstimator(
