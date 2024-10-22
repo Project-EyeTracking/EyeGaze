@@ -232,7 +232,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
         fps = 30  # Default to 30 if FPS is not available
 
     
-    # Screen parameters (adjust these according to your setup)
+    # Screen parameters (calibration should be done to get these parameters)
     screen_width_px = 1920    # Screen width in pixels
     screen_height_px = 1080   # Screen height in pixels
     screen_width_cm = 47.6    # Screen width in centimeters
