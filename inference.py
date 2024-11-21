@@ -11,7 +11,6 @@ from PIL import Image
 
 from l2cs import L2CS, GazeEstimator, render
 
-
 CWD = pathlib.Path.cwd()
 
 
@@ -23,9 +22,8 @@ def select_device():
         print("Using MPS (Apple Silicon)")
     elif torch.cuda.is_available():
         # CUDA is available (GPU)
-        device = torch.device("cuda:0")
+        device = torch.device("cuda")
         print(f"Using CUDA: {torch.cuda.get_device_name(device)}")
-        #print("id",device.index)
     else:
         # Fallback to CPU
         device = torch.device("cpu")
@@ -56,11 +54,11 @@ def parse_args():
         type=str,
         help="Device to run model: cpu or cuda or mps",
     )
-    #parser.add_argument(
-    #    "--cam", dest="cam_id", type=int, help="Camera device id to use [0]"
-    #)
     parser.add_argument(
-        "--video_path", dest="video_path",default=0, type=str, help="Input video path (optional)"
+        "--cam", dest="cam_id", default=0, type=int, help="Camera device id to use [0]"
+    )
+    parser.add_argument(
+        "--video_path", dest="video_path", type=str, help="Input video path (optional)"
     )
     parser.add_argument(
         "--image_path", dest="image_path", type=str, help="Path to the input eye image (optional)"
@@ -84,7 +82,7 @@ def parse_args():
 
 
 def process_image(
-    image, gaze_estimator, draw_head_pose=True, draw_gaze=True, output_mode="visualize"
+    image, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
 ):
     # Convert PIL Image to NumPy array
     image_np = np.array(image)
@@ -120,7 +118,7 @@ def process_image(
 
 
 def process_webcam(
-    cam_id, gaze_estimator, draw_head_pose=True, draw_gaze=True, output_mode="visualize"
+    cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
 ):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
@@ -217,8 +215,9 @@ def process_webcam(
     #     cv2.destroyAllWindows()
 
 
-def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="save"):
-    #print("here")
+def process_video(
+    video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
@@ -227,17 +226,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
     # Get video properties
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps == 0 or fps is None:
-        fps = 30  # Default to 30 if FPS is not available
-
-    
-    # Screen parameters (calibration should be done to get these parameters)
-    screen_width_px = 1920    # Screen width in pixels
-    screen_height_px = 1080   # Screen height in pixels
-    screen_width_cm = 47.6    # Screen width in centimeters
-    screen_height_cm = 26.8   # Screen height in centimeters
-    screen_distance_cm = 60   # Distance from eyes to screen in centimeters
+    fps = 30  # Set output FPS to 30
 
     out = None
     if output_mode in ["save", "both"]:
@@ -245,7 +234,7 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
         output_dir.mkdir(exist_ok=True)
         output_path = output_dir / f"processed_video_{int(time.time())}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(output_path), fourcc,fps, (width, height))
+        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # FPS calculation variables
     frame_times = []
@@ -255,7 +244,6 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
     while cap.isOpened():
         frame_start_time = time.time()
         ret, frame = cap.read()
-
         if not ret:
             print("Error: Failed to capture frame")
             break
@@ -266,37 +254,9 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
 
         # Check if results.pitch is not empty
         if results.pitch is not None and len(results.pitch) > 0:
-
-            # Assuming single face
-            pitch = results.pitch[0]
-            yaw = results.yaw[0]
-
-            # Convert angles from degrees to radians
-            pitch_rad = np.radians(pitch)
-            yaw_rad = np.radians(yaw)
-
-            # Calculate gaze point in centimeters relative to screen center
-            x_cm = screen_distance_cm * np.tan(yaw_rad)
-            y_cm = screen_distance_cm * np.tan(pitch_rad)
-
-            # Map physical coordinates to pixel coordinates
-            x_px = (x_cm / (screen_width_cm / 2)) * (screen_width_px / 2) + (screen_width_px / 2)
-            y_px = -(y_cm / (screen_height_cm / 2)) * (screen_height_px / 2) + (screen_height_px / 2)
-
-            # Ensure coordinates are within screen bounds
-            x_px = int(np.clip(x_px, 0, screen_width_px - 1))
-            y_px = int(np.clip(y_px, 0, screen_height_px - 1))
-
-            # Draw gaze point on the frame
-            cv2.circle(frame, (x_px, y_px), 10, (0, 0, 255), -1)
-
-            # Optional: Print the gaze coordinates
-            print(f"Gaze coordinates: ({x_px}, {y_px})")
-
-      
+            # Visualize output
             if draw_gaze:
                 frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
-
 
             if draw_head_pose:
                 for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
@@ -334,7 +294,6 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
 
         else:
             print("No gaze detected in this frame")
-
             no_gaze_count += 1
 
         # Exit on pressing 'q'
@@ -348,20 +307,17 @@ def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=Tr
     if output_mode in ["visualize", "both"]:
         cv2.destroyAllWindows()
 
-    #print(results)
-    #print(no_gaze_count)
 
 if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
-    args.video_path = r'C:\Users\anagh\Videos\camera_recording.mp4'
+    # image_path = CWD / 'assets' / 'input_image.png'
 
     device = select_device()
-    
 
     # Load the model
     model = load_model(model_path, device)
-    
+    print(f"{device=}")
 
     # Create GazeEstimator instance
     gaze_estimator = GazeEstimator(
@@ -369,20 +325,17 @@ if __name__ == "__main__":
         device=device,
         include_detector=True,
         confidence_threshold=0.9,
-        include_head_pose=True,
+        include_head_pose=False,
     )
-
-    
 
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert("RGB")
         frame, _ = process_image(
-            image, gaze_estimator, draw_head_pose=True, draw_gaze=True, output_mode=args.output
+            image, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode=args.output
         )
 
     elif args.video_path:
-        #print("here")
         # Process video file
         process_video(
             args.video_path,
@@ -392,14 +345,12 @@ if __name__ == "__main__":
             output_mode=args.output,
         )
     else:
-        pass
-    
-        # # print(args.cam_id)
-        # # If neither image nor video is provided, use webcam
-        # process_webcam(
-        #     args.cam_id,
-        #     gaze_estimator,
-        #     draw_head_pose=True,
-        #     draw_gaze=True,
-        #     output_mode=args.output,
-        # )
+        # print(args.cam_id)
+        # If neither image nor video is provided, use webcam
+        process_webcam(
+            args.cam_id,
+            gaze_estimator,
+            draw_head_pose=False,
+            draw_gaze=True,
+            output_mode=args.output,
+        )

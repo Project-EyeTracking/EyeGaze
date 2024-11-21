@@ -28,7 +28,7 @@ class GazeEstimator:
                 self.head_pose_estimator = SixDRep(gpu_id=-1)
             else:
                 self.head_pose_estimator = SixDRep(gpu_id=0)
-        print(f"{self.head_pose_estimator.device=}")
+            print(f"{self.head_pose_estimator.device=}")
 
         self.transform = transforms.Compose(
             [
@@ -45,7 +45,7 @@ class GazeEstimator:
                 self.detector = RetinaFace()
             else:
                 self.detector = RetinaFace(gpu_id=device.index)
-        print(f"{self.detector.device=}")
+            print(f"{self.detector.device=}")
 
     def prep_input_numpy(self, img: np.ndarray):
         """Preparing a Numpy Array as input to L2CS-Net."""
