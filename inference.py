@@ -83,7 +83,7 @@ def parse_args():
     return args
 
 
-"""def process_image(
+def process_image(
     image, gaze_estimator, draw_head_pose=True, draw_gaze=True, output_mode="visualize"
 ):
     # Convert PIL Image to NumPy array
@@ -215,7 +215,7 @@ def process_webcam(
     #     print(f"Webcam output saved to: {output_path}")
     # if output_mode in ["visualize", "both"]:
     #     cv2.destroyAllWindows()
-"""
+
 
 def process_video(video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="save"):
     #print("here")
@@ -357,11 +357,11 @@ if __name__ == "__main__":
     args.video_path = r'C:\Users\anagh\Videos\camera_recording.mp4'
 
     device = select_device()
-    #print("index",device.index)
+    
 
     # Load the model
     model = load_model(model_path, device)
-    #print("abov1e")
+    
 
     # Create GazeEstimator instance
     gaze_estimator = GazeEstimator(
@@ -372,7 +372,7 @@ if __name__ == "__main__":
         include_head_pose=True,
     )
 
-    #print("above")
+    
 
     if args.image_path:
         # Load and prepare the image
@@ -393,13 +393,13 @@ if __name__ == "__main__":
         )
     else:
         pass
-    """else:
-        # print(args.cam_id)
-        # If neither image nor video is provided, use webcam
-        process_webcam(
-            args.cam_id,
-            gaze_estimator,
-            draw_head_pose=True,
-            draw_gaze=True,
-            output_mode=args.output,
-        )"""
+    
+        # # print(args.cam_id)
+        # # If neither image nor video is provided, use webcam
+        # process_webcam(
+        #     args.cam_id,
+        #     gaze_estimator,
+        #     draw_head_pose=True,
+        #     draw_gaze=True,
+        #     output_mode=args.output,
+        # )
