@@ -325,7 +325,7 @@ if __name__ == "__main__":
         device=device,
         include_detector=True,
         confidence_threshold=0.9,
-        include_head_pose=True,
+        include_head_pose=False,
     )
 
     if args.image_path:
