@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import os
-
+import xml.etree.ElementTree as ET
+import json
 def capturepictures():
     
      # Create a directory to save images if it doesn't already exist
@@ -56,6 +57,34 @@ def capturepictures():
     print(f"Captured {image_count} images. Images saved in '{output_dir}' directory.")
     return output_dir
 
+
+# Calculate the total reprojection error
+def calculate_reprojection_error(obj_points, img_points, rvecs, tvecs, camera_matrix, dist_coeffs):
+    total_error = 0
+    for i in range(len(obj_points)):
+        img_points2, _ = cv2.projectPoints(obj_points[i], rvecs[i], tvecs[i], camera_matrix, dist_coeffs)
+        error = cv2.norm(img_points[i], img_points2, cv2.NORM_L2) / len(img_points2)
+        total_error += error
+    mean_error = total_error / len(obj_points)
+    return mean_error
+
+
+def write_output_to_json(focal_length, camera_matrix, dist_coeffs, optical_center, error):
+    output_data = {
+        "FocalLength": focal_length,
+        "Fx": camera_matrix[0][0],
+        "Fy" : camera_matrix [1][1],
+        "OpticalCenter": {"cx": optical_center[0], "cy": optical_center[1]} if optical_center else None,
+        "CameraMatrix": camera_matrix.tolist() if camera_matrix is not None else None,
+        "DistortionCoefficients": dist_coeffs.flatten().tolist() if dist_coeffs is not None else None,
+        "ReprojectionError": error,
+    }
+
+    cwd = os.getcwd()
+    output_file = os.path.join(cwd, "calibration_output.json")
+    with open(output_file, "w") as f:
+        json.dump(output_data, f, indent=4)
+
 def calibrate_camera(image_dir, pattern_size):
     objp = np.zeros((pattern_size[0] * pattern_size[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:pattern_size[0], 0:pattern_size[1]].T.reshape(-1, 2)
@@ -68,7 +97,7 @@ def calibrate_camera(image_dir, pattern_size):
         img_path = os.path.join(image_dir, file)
         img = cv2.imread(img_path)
         if img is None:
-            print(f"Image not found: {img_path}")
+            # print(f"Image not found: {img_path}")
             continue
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -80,12 +109,10 @@ def calibrate_camera(image_dir, pattern_size):
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             obj_points.append(objp)
             img_points.append(corners2)
-            cv2.drawChessboardCorners(img, pattern_size, corners2, ret)
-            cv2.imshow("Detected Corners", img)
-            cv2.waitKey(1000)
+        
         else:
-            print(f"Chessboard corners not found in {img_path}")
-
+           
+            pass
     cv2.destroyAllWindows()
 
     if len(obj_points) < 1:
@@ -98,43 +125,34 @@ def calibrate_camera(image_dir, pattern_size):
 
  
     error = calculate_reprojection_error(obj_points, img_points, rvecs, tvecs, camera_matrix, dist_coeffs)
-    print(f"Mean Reprojection Error: {error}") 
-    #mean error should be closer to 0.
 
     if ret:
-        return camera_matrix, dist_coeffs, (camera_matrix[0, 2], camera_matrix[1, 2])
+        return camera_matrix, dist_coeffs, (camera_matrix[0, 2], camera_matrix[1, 2]), error
     else:
         print("Camera calibration failed.")
-        return None, None, None
+        return None, None, None, None
     
-# Calculate the total reprojection error
-def calculate_reprojection_error(obj_points, img_points, rvecs, tvecs, camera_matrix, dist_coeffs):
-    total_error = 0
-    for i in range(len(obj_points)):
-        img_points2, _ = cv2.projectPoints(obj_points[i], rvecs[i], tvecs[i], camera_matrix, dist_coeffs)
-        error = cv2.norm(img_points[i], img_points2, cv2.NORM_L2) / len(img_points2)
-        total_error += error
-    mean_error = total_error / len(obj_points)
-    return mean_error
 
 
 
-def main():
+
+def calculate_focal_length():
 
     #image_dir = capturepictures()
     image_dir = r"C:\Users\anagh\EyeGaze-1\images"  # Change to your directory
     pattern_size = (4,7)  # Inner corners in the chessboard
-    camera_matrix, dist_coeffs, optical_center = calibrate_camera(image_dir, pattern_size)
+    camera_matrix, dist_coeffs, optical_center, error = calibrate_camera(image_dir, pattern_size)
 
-    if camera_matrix is not None:
-        print("Camera Matrix:\n", camera_matrix)
-        print("Distortion Coefficients:\n", dist_coeffs)
-        print(f"Optical Center: {optical_center}")
-    
    
+    if camera_matrix is not None:
+        focal_length = (camera_matrix[0][0] + camera_matrix[1][1]) / 2
+        write_output_to_json(focal_length, camera_matrix, dist_coeffs, optical_center, error)
+    else:
+        write_output_to_json(None, None, None, None, None)
+        
+#calculate_focal_length()
 
-if __name__ == "__main__":
-    main()
+
 
 
 

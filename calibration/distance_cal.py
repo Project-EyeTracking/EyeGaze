@@ -1,42 +1,8 @@
 import math
-
 import cv2
 import numpy as np
 
-
-def calculate_focal_length():
-    # Initialize webcam
-    cap = cv2.VideoCapture(0)
-
-    # Get the frame width and height
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    # Approximate horizontal and vertical FOV angles (in degrees)
-    # These values are typical for most webcams but may need adjustment
-    horizontal_fov = 60  # degrees
-    vertical_fov = 45  # degrees
-
-    # Convert FOV angles to radians
-    horizontal_fov_rad = math.radians(horizontal_fov)
-    vertical_fov_rad = math.radians(vertical_fov)
-
-    # Calculate focal length using the formula: f = (image_width/2) / tan(FOV/2)
-    focal_length_horizontal = (frame_width / 2) / math.tan(horizontal_fov_rad / 2)
-    focal_length_vertical = (frame_height / 2) / math.tan(vertical_fov_rad / 2)
-
-    # Average the two focal lengths
-    focal_length = (focal_length_horizontal + focal_length_vertical) / 2
-
-    # Release webcam
-    cap.release()
-
-    print(f"Frame dimensions: {frame_width}x{frame_height}")
-    print(f"Estimated focal length: {focal_length:.2f} pixels")
-    print(f"Focal length (horizontal): {focal_length_horizontal:.2f} pixels")
-    print(f"Focal length (vertical): {focal_length_vertical:.2f} pixels")
-
-    return focal_length
+import OC_calibration  #importing to get the focal length
 
 
 def calculate_distance(focal_length):
@@ -47,9 +13,6 @@ def calculate_distance(focal_length):
 
     # Initialize webcam
     cap = cv2.VideoCapture(0)
-
-    # # Get focal length
-    # focal_length = calculate_focal_length()
 
     # Known average face width in cm
     KNOWN_FACE_WIDTH = 16.0  # cm - average adult face width
@@ -95,5 +58,5 @@ def calculate_distance(focal_length):
 
 
 if __name__ == "__main__":
-    focal_length = calculate_focal_length()
+    focal_length = OC_calibration.optical_centre()
     calculate_distance(focal_length)

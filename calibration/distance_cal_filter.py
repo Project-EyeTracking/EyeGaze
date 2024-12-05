@@ -3,6 +3,10 @@ from collections import deque
 
 import cv2
 import numpy as np
+import os
+import json
+import OC_calibration
+
 
 
 class DistanceEstimator:
@@ -95,9 +99,36 @@ class DistanceEstimator:
         self.last_valid_distance = distance
         return distance
 
+
+    def get_focal_length_from_json(self,json_file):
+        if not os.path.exists(json_file):
+            print(f"File not found: {json_file}")
+            return None
+        
+        # Open and load the JSON file
+        with open(json_file, "r") as f:
+            data = json.load(f)
+        
+        # Extract the focal length
+        focal_length = data.get("FocalLength", None)
+        if focal_length is not None:
+            return focal_length
+        else:
+            return None
+
     def calculate_distance(self):
         cap = cv2.VideoCapture(0)
-        focal_length = self.calculate_focal_length()
+        #focal_length = self.calculate_focal_length()
+        #print(focal_length)
+        
+        # Specify the JSON file path
+        cwd = os.getcwd()
+        json_file = os.path.join(cwd, "calibration_output.json")
+
+        # Get the focal length
+        focal_length = self.get_focal_length_from_json(json_file)
+
+        #print("FL from checkerboard",focal_length1)
 
         while True:
             ret, frame = cap.read()
@@ -118,8 +149,8 @@ class DistanceEstimator:
                 if validated_distance is None:
                     continue
 
-                smoothed_distance = self.moving_average_filter(validated_distance)
-                filtered_distance = self.kalman_filter(smoothed_distance)
+                # smoothed_distance = self.moving_average_filter(validated_distance)
+                # filtered_distance = self.kalman_filter(smoothed_distance)
 
                 # Draw rectangle and display distances
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
@@ -135,36 +166,39 @@ class DistanceEstimator:
                     (0, 0, 255),
                     2,
                 )
-                cv2.putText(
-                    frame,
-                    f"Smoothed: {smoothed_distance:.1f} cm",
-                    (x, y_offset + 20),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 255, 0),
-                    2,
-                )
-                cv2.putText(
-                    frame,
-                    f"Filtered: {filtered_distance:.1f} cm",
-                    (x, y_offset + 40),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 0, 0),
-                    2,
-                )
+                # cv2.putText(
+                #     frame,
+                #     f"Smoothed: {smoothed_distance:.1f} cm",
+                #     (x, y_offset + 20),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.7,
+                #     (0, 255, 0),
+                #     2,
+                # )
+                # cv2.putText(
+                #     frame,
+                #     f"Filtered: {filtered_distance:.1f} cm",
+                #     (x, y_offset + 40),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.7,
+                #     (255, 0, 0),
+                #     2,
+                # )
 
-                # Draw confidence indicator
-                confidence = min(len(self.distance_history) / self.QUEUE_SIZE, 1.0)
-                cv2.putText(
-                    frame,
-                    f"Confidence: {confidence:.1%}",
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 255, 0),
-                    2,
-                )
+                # # Draw confidence indicator
+                # confidence = min(len(self.distance_history) / self.QUEUE_SIZE, 1.0)
+                # cv2.putText(
+                #     frame,
+                #     f"Confidence: {confidence:.1%}",
+                #     (10, 30),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     0.7,
+                #     (0, 255, 0),
+                #     2,
+                # )
+
+            # Stop processing after handling the first face
+            
 
             cv2.imshow("Distance Estimation", frame)
 
@@ -176,5 +210,7 @@ class DistanceEstimator:
 
 
 if __name__ == "__main__":
+
+    OC_calibration.calculate_focal_length()
     estimator = DistanceEstimator()
     estimator.calculate_distance()
