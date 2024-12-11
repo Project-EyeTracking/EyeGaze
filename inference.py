@@ -9,7 +9,7 @@ import torch
 import torchvision
 from PIL import Image
 
-from calibration import GazeMapper, ScreenSpecs
+from calibration import GazeMapper, ScreenSpecs, read_screen_specs
 from l2cs import L2CS, GazeEstimator, render
 
 CWD = pathlib.Path.cwd()
@@ -311,6 +311,7 @@ if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
     # image_path = CWD / 'assets' / 'input_image.png'
+    screen_spec_path = CWD / "calibration" / "screen_spec.json"
 
     device = select_device()
 
@@ -328,9 +329,7 @@ if __name__ == "__main__":
     )
 
     # Screen specifications
-    screen = ScreenSpecs(
-        width_pixels=1470, height_pixels=956, width_cm=30.4, height_cm=21.49, distance_cm=55.0
-    )
+    screen = read_screen_specs(screen_spec_path)
 
     # Initialize mapper
     mapper = GazeMapper(screen)

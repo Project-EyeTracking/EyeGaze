@@ -1,5 +1,6 @@
 # Check for mirroring of screen
 
+import json
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -16,6 +17,19 @@ class ScreenSpecs:
     width_cm: float  # Physical screen width in centimeters
     height_cm: float  # Physical screen height in centimeters
     distance_cm: float  # Distance from eye to screen in centimeters
+
+
+def read_screen_specs(file_path: str) -> ScreenSpecs:
+    """Reads screen specifications from a JSON file and returns a ScreenSpecs object."""
+    with open(file_path) as file:
+        data = json.load(file)
+        return ScreenSpecs(
+            width_pixels=data["width_pixels"],
+            height_pixels=data["height_pixels"],
+            width_cm=data["width_cm"],
+            height_cm=data["height_cm"],
+            distance_cm=data["distance_cm"],
+        )
 
 
 class GazeMapper:
