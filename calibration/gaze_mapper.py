@@ -64,8 +64,8 @@ class GazeMapper:
         Returns:
             Tuple[float, float]: (x, y) coordinates in centimeters
         """
-        x = self.screen.distance_cm * np.tan(yaw)
-        y = self.screen.distance_cm * np.tan(pitch)
+        x = -self.screen.distance_cm * np.tan(yaw)
+        y = -self.screen.distance_cm * np.tan(pitch)
         return x, y
 
     def _cm_to_pixels(self, x_cm: float, y_cm: float) -> Tuple[int, int]:
@@ -83,7 +83,7 @@ class GazeMapper:
             (x_cm + self.screen.width_cm / 2) * (self.screen.width_pixels / self.screen.width_cm)
         )
         y_pixel = int(
-            (-y_cm + self.screen.height_cm / 2)
+            (y_cm + self.screen.height_cm / 2)
             * (self.screen.height_pixels / self.screen.height_cm)
         )
 
@@ -213,11 +213,11 @@ class GazeMapper:
 def main():
     # Example screen specifications (24-inch 1920x1080 monitor at 40cm distance)
     screen = ScreenSpecs(
-        width_pixels=1920,
-        height_pixels=1080,
-        width_cm=30.4,  # Typical 24-inch monitor width
-        height_cm=21.49,  # Typical 24-inch monitor height
-        distance_cm=40.0,  # Distance from eyes to screen
+        width_pixels=1470,
+        height_pixels=956,
+        width_cm=30.4,
+        height_cm=21.49,
+        distance_cm=55.0,
     )
 
     # Initialize mapper

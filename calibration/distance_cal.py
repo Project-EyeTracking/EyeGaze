@@ -59,6 +59,9 @@ def calculate_distance(focal_length):
         if not ret:
             break
 
+        # Mirror the frame horizontally
+        frame = cv2.flip(frame, 1)
+
         # Convert to grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
