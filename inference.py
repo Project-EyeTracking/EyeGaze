@@ -9,7 +9,7 @@ import torch
 import torchvision
 from PIL import Image
 
-from calibration import GazeMapper, ScreenSpecs, read_screen_specs
+from calibration import ArucoDetector, GazeMapper, ScreenSpecs, read_screen_specs
 from l2cs import L2CS, GazeEstimator, render
 
 CWD = pathlib.Path.cwd()
@@ -125,6 +125,8 @@ def process_webcam(
     draw_gaze=True,
     output_mode="visualize",
     mapper=None,
+    ar_detector=None,
+    marker_id=None,
 ):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
@@ -142,6 +144,10 @@ def process_webcam(
         if not ret:
             print("Error: Failed to capture frame")
             break
+
+        processed_frame, distances = ar_detector.process_frame(frame)
+        mapper.screen.distance_cm = distances.get(marker_id, 0.0)
+        # print(f"{mapper.screen.distance_cm=}")
 
         # Mirror the frame horizontally
         frame = cv2.flip(frame, 1)
@@ -330,7 +336,11 @@ if __name__ == "__main__":
 
     # Screen specifications
     screen = read_screen_specs(screen_spec_path)
+    # print(f"{screen=}")
 
+    ar_uco_detector = ArucoDetector(
+        marker_real_width=4.0, calibration_file="calibration/calibration_results.json"
+    )
     # Initialize mapper
     mapper = GazeMapper(screen)
 
@@ -378,4 +388,6 @@ if __name__ == "__main__":
             draw_gaze=True,
             output_mode=args.output,
             mapper=mapper,
+            ar_detector=ar_uco_detector,
+            marker_id=42,
         )
