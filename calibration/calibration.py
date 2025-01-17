@@ -46,6 +46,7 @@ class CameraCalibrator:
         os.makedirs(output_dir, exist_ok=True)
 
         cap = cv2.VideoCapture(cam_id)
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
         if not cap.isOpened():
             raise RuntimeError("Could not access the webcam.")
 
@@ -147,6 +148,9 @@ class CameraCalibrator:
             if ret:
                 obj_points.append(self.objp)
                 img_points.append(corners)
+                cv2.drawChessboardCorners(img, self.pattern_size, corners, ret)
+                cv2.imshow("Detected Corners", img)
+                cv2.waitKey(500)
             else:
                 print(f"Warning: No corners found in image: {img_path}")
 
@@ -167,6 +171,9 @@ class CameraCalibrator:
         )
 
         optical_center = (camera_matrix[0, 2], camera_matrix[1, 2])
+        focal_lengths = (camera_matrix[0, 0], camera_matrix[1, 1])
+
+        print(f"Focal Lengths: fx = {focal_lengths[0]}, fy = {focal_lengths[1]}")
         return camera_matrix, dist_coeffs, optical_center, error
 
     def save_calibration_results(
@@ -201,12 +208,12 @@ def main():
     # Initialize calibrator with default settings
     calibrator = CameraCalibrator(pattern_size=(4, 7))
 
-    # # Capture calibration images
-    # image_dir = calibrator.capture_calibration_images(
-    #     cam_id=0,
-    #     output_dir="calibration_images",
-    #     max_images=12
-    # )
+    # Capture calibration images
+    image_dir = calibrator.capture_calibration_images(
+        cam_id=0,
+        output_dir="calibration_images",
+        max_images=25
+    )
 
     # Perform calibration
     image_dir = "calibration_images"

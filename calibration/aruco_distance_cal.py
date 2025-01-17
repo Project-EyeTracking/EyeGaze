@@ -143,6 +143,7 @@ class ArucoDetector:
             camera_id: ID of the camera to use
         """
         cap = cv2.VideoCapture(camera_id)
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
         if not cap.isOpened():
             print(f"Error: Could not open camera {camera_id}")
             return
