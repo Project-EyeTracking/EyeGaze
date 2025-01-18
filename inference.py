@@ -9,6 +9,7 @@ import torch
 import torchvision
 from PIL import Image
 
+from calibration import ArucoDetector, GazeMapper, ScreenSpecs, read_screen_specs
 from l2cs import L2CS, GazeEstimator, render
 
 CWD = pathlib.Path.cwd()
@@ -118,25 +119,19 @@ def process_image(
 
 
 def process_webcam(
-    cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+    cam_id,
+    gaze_estimator,
+    draw_head_pose=False,
+    draw_gaze=True,
+    output_mode="visualize",
+    mapper=None,
+    ar_detector=None,
+    marker_id=None,
 ):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
-
-    # # Get video properties
-    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # fps = 30  # Set output FPS to 30
-
-    # out = None
-    # if output_mode in ["save", "both"]:
-    #     output_dir = CWD / "output"
-    #     output_dir.mkdir(exist_ok=True)
-    #     output_path = output_dir / f"webcam_output_{int(time.time())}.mp4"
-    #     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    #     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # FPS calculation variables
     frame_times = []
@@ -150,12 +145,35 @@ def process_webcam(
             print("Error: Failed to capture frame")
             break
 
+        processed_frame, distances = ar_detector.process_frame(frame)
+        mapper.screen.distance_cm = distances.get(marker_id, 0.0)
+        # print(f"{mapper.screen.distance_cm=}")
+
+        # Mirror the frame horizontally
+        frame = cv2.flip(frame, 1)
+
         # Perform gaze estimation
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = gaze_estimator.predict(frame)
 
         # Check if results.pitch is not empty
         if results.pitch is not None and len(results.pitch) > 0:
+            try:
+                yaw = results.yaw[0]
+                pitch = results.pitch[0]
+
+                x, y = mapper.angles_to_screen_point(pitch, yaw)
+
+                print(
+                    f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
+                )
+                print(f"Screen point: ({x}, {y}) pixels")
+
+                mapper.visualize_gaze_point(x, y)
+
+            except ValueError as e:
+                print(f"Error: {e}")
+
             # Visualize output
             if draw_gaze:
                 frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
@@ -190,12 +208,6 @@ def process_webcam(
 
             cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-            # if out:
-            #     out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-            # if output_mode in ["visualize", "both"]:
-            #     cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
         else:
             print("No gaze detected in this frame")
             no_gaze_count += 1
@@ -203,16 +215,9 @@ def process_webcam(
         # Exit on pressing 'q'
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-        # if output_mode != "none" and cv2.waitKey(1) & 0xFF == ord("q"):
-        #     break
 
     cap.release()
     cv2.destroyAllWindows()
-    # if out:
-    #     out.release()
-    #     print(f"Webcam output saved to: {output_path}")
-    # if output_mode in ["visualize", "both"]:
-    #     cv2.destroyAllWindows()
 
 
 def process_video(
@@ -312,6 +317,7 @@ if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
     # image_path = CWD / 'assets' / 'input_image.png'
+    screen_spec_path = CWD / "calibration" / "screen_spec.json"
 
     device = select_device()
 
@@ -327,6 +333,34 @@ if __name__ == "__main__":
         confidence_threshold=0.9,
         include_head_pose=False,
     )
+
+    # Screen specifications
+    screen = read_screen_specs(screen_spec_path)
+    # print(f"{screen=}")
+
+    ar_uco_detector = ArucoDetector(
+        marker_real_width=4.0, calibration_file="calibration/calibration_results.json"
+    )
+    # Initialize mapper
+    mapper = GazeMapper(screen)
+
+    # Print visible range info
+    visible_range = mapper.get_visible_range()
+    print("\n--- Visible Range ---")
+    print(
+        f"Max Yaw: ±{visible_range['max_yaw_rad']:.3f} rad (±{visible_range['max_yaw_deg']:.1f}°)"
+    )
+    print(
+        f"Max Pitch: ±{visible_range['max_pitch_rad']:.3f} rad (±{visible_range['max_pitch_deg']:.1f}°)"
+    )
+    print(
+        f"Screen dimensions: {visible_range['screen_width_cm']}x{visible_range['screen_height_cm']} cm"
+    )
+    print(
+        f"Screen resolution: {visible_range['screen_width_px']}x{visible_range['screen_height_px']} pixels"
+    )
+    print(f"Distance from screen: {visible_range['distance_cm']} cm")
+    print("----------------------")
 
     if args.image_path:
         # Load and prepare the image
@@ -353,4 +387,7 @@ if __name__ == "__main__":
             draw_head_pose=False,
             draw_gaze=True,
             output_mode=args.output,
+            mapper=mapper,
+            ar_detector=ar_uco_detector,
+            marker_id=42,
         )
