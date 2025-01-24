@@ -2,13 +2,14 @@ import argparse
 import os
 import pathlib
 import time
-
+import csv
 import cv2
 import numpy as np
 import torch
 import torchvision
 from PIL import Image
 
+from calibration import ArucoDetector, GazeMapper, ScreenSpecs, read_screen_specs
 from l2cs import L2CS, GazeEstimator, render
 
 CWD = pathlib.Path.cwd()
@@ -55,10 +56,10 @@ def parse_args():
         help="Device to run model: cpu or cuda or mps",
     )
     parser.add_argument(
-        "--cam", dest="cam_id", default=0, type=int, help="Camera device id to use [0]"
+        "--cam", dest="cam_id", type=int, help="Camera device id to use [0]"
     )
     parser.add_argument(
-        "--video_path", dest="video_path", type=str, help="Input video path (optional)"
+        "--video_path", dest="video_path",default=0, type=str, help="Input video path (optional)"
     )
     parser.add_argument(
         "--image_path", dest="image_path", type=str, help="Path to the input eye image (optional)"
@@ -118,25 +119,19 @@ def process_image(
 
 
 def process_webcam(
-    cam_id, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+    cam_id,
+    gaze_estimator,
+    draw_head_pose=False,
+    draw_gaze=True,
+    output_mode="visualize",
+    mapper=None,
+    ar_detector=None,
+    marker_id=None,
 ):
     cap = cv2.VideoCapture(cam_id)
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
-
-    # # Get video properties
-    # width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    # height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    # fps = 30  # Set output FPS to 30
-
-    # out = None
-    # if output_mode in ["save", "both"]:
-    #     output_dir = CWD / "output"
-    #     output_dir.mkdir(exist_ok=True)
-    #     output_path = output_dir / f"webcam_output_{int(time.time())}.mp4"
-    #     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    #     out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # FPS calculation variables
     frame_times = []
@@ -150,12 +145,35 @@ def process_webcam(
             print("Error: Failed to capture frame")
             break
 
+        processed_frame, distances = ar_detector.process_frame(frame)
+        mapper.screen.distance_cm = distances.get(marker_id, 0.0)
+     
+
+        # Mirror the frame horizontally
+        frame = cv2.flip(frame, 1)
+
         # Perform gaze estimation
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = gaze_estimator.predict(frame)
 
         # Check if results.pitch is not empty
         if results.pitch is not None and len(results.pitch) > 0:
+            try:
+                yaw = results.yaw[0]
+                pitch = results.pitch[0]
+
+                x, y = mapper.angles_to_screen_point(pitch, yaw)
+
+                print(
+                    f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
+                )
+                print(f"Screen point: ({x}, {y}) pixels")
+
+                mapper.visualize_gaze_point(x, y)
+
+            except ValueError as e:
+                print(f"Error: {e}")
+
             # Visualize output
             if draw_gaze:
                 frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
@@ -190,12 +208,6 @@ def process_webcam(
 
             cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
 
-            # if out:
-            #     out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-            # if output_mode in ["visualize", "both"]:
-            #     cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
         else:
             print("No gaze detected in this frame")
             no_gaze_count += 1
@@ -203,115 +215,109 @@ def process_webcam(
         # Exit on pressing 'q'
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-        # if output_mode != "none" and cv2.waitKey(1) & 0xFF == ord("q"):
-        #     break
 
     cap.release()
     cv2.destroyAllWindows()
-    # if out:
-    #     out.release()
-    #     print(f"Webcam output saved to: {output_path}")
-    # if output_mode in ["visualize", "both"]:
-    #     cv2.destroyAllWindows()
-
 
 def process_video(
-    video_path, gaze_estimator, draw_head_pose=False, draw_gaze=True, output_mode="visualize"
+    video_path,
+    gaze_estimator,
+    draw_head_pose=False,
+    draw_gaze=True,
+    output_mode="none",  # Disable visualization
+    mapper=None,
+    ar_detector=None,
+    marker_id=None,
 ):
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
         return
 
-    # Get video properties
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = 30  # Set output FPS to 30
+    # CSV setup
+    csv_file_path = CWD / "output" / f"{video_path}.csv"
+    csv_file_path.parent.mkdir(exist_ok=True)  # Ensure the output directory exists
+    with open(csv_file_path, mode="w", newline="") as csv_file:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow([
+            "Frame",
+            "Time (s)",
+            "Pitch (rad)",
+            "Yaw (rad)",
+            "Pitch (deg)",
+            "Yaw (deg)",
+            "Screen X (px)",
+            "Screen Y (px)",
+            "Distance (cm)",
+        ])
 
-    out = None
-    if output_mode in ["save", "both"]:
-        output_dir = CWD / "output"
-        output_dir.mkdir(exist_ok=True)
-        output_path = output_dir / f"processed_video_{int(time.time())}.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_index = 0
 
-    # FPS calculation variables
-    frame_times = []
-    fps = 0
-    no_gaze_count = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("End of video reached or error in reading frame.")
+                break
 
-    while cap.isOpened():
-        frame_start_time = time.time()
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Failed to capture frame")
-            break
+            # Get current time in video
+            time_in_video = frame_index / fps
 
-        # Perform gaze estimation
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = gaze_estimator.predict(frame)
+            # Perform gaze estimation
+            processed_frame,distances = ar_detector.process_frame(frame)
+            mapper.screen.distance_cm = distances.get(marker_id, 0.0)
 
-        # Check if results.pitch is not empty
-        if results.pitch is not None and len(results.pitch) > 0:
-            # Visualize output
-            if draw_gaze:
-                frame = render(frame, results, draw_landmarks=False, draw_bboxes=True)
+            # Mirror the frame horizontally
+            frame = cv2.flip(frame, 1)
 
-            if draw_head_pose:
-                for bbox, head_orientation in zip(results.bboxes, results.head_orientations):
-                    gaze_estimator.head_pose_estimator.plot_pose_cube(
-                        frame, bbox, **head_orientation
-                    )
+            # Perform gaze estimation
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = gaze_estimator.predict(frame)
 
-            # Calculate and display FPS
-            frame_time = time.time() - frame_start_time
-            frame_times.append(frame_time)
+            # Check if gaze results are available
+            if results.pitch is not None and len(results.pitch) > 0:
+                try:
+                    pitch_rad = results.pitch[0]
+                    yaw_rad = results.yaw[0]
+                    pitch_deg = np.degrees(pitch_rad)
+                    yaw_deg = np.degrees(yaw_rad)
 
-            # Calculate FPS over last 30 frames
-            if len(frame_times) > 30:
-                frame_times.pop(0)
-            fps = len(frame_times) / sum(frame_times)
+                    # Calculate screen coordinates
+                    screen_x, screen_y = mapper.angles_to_screen_point(pitch_rad, yaw_rad)
+                    distance_cm = mapper.screen.distance_cm
 
-            cv2.putText(
-                frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
-            )
-            cv2.putText(
-                frame,
-                f"No Gaze Frames: {no_gaze_count}",
-                (10, 60),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2,
-            )
+                    # Log data to CSV
+                    csv_writer.writerow([
+                        frame_index,
+                        time_in_video,
+                        pitch_rad,
+                        yaw_rad,
+                        pitch_deg,
+                        yaw_deg,
+                        screen_x,
+                        screen_y,
+                        distance_cm,
+                    ])
 
-            if out:
-                out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+                except ValueError:
+                    # Skip if there's an error in processing gaze data
+                    pass
 
-            if output_mode in ["visualize", "both"]:
-                cv2.imshow("Gaze Estimation", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-
-        else:
-            print("No gaze detected in this frame")
-            no_gaze_count += 1
-
-        # Exit on pressing 'q'
-        if output_mode != "none" and cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+            frame_index += 1
 
     cap.release()
-    if out:
-        out.release()
-        print(f"Processed video saved to: {output_path}")
-    if output_mode in ["visualize", "both"]:
-        cv2.destroyAllWindows()
+    print(f"Gaze results saved to: {csv_file_path}")
+
 
 
 if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
-    # image_path = CWD / 'assets' / 'input_image.png'
+    output_path = CWD / 'output'
+    for filenames in output_path:
+        if(filenames.endswith(''))
+    args.video_path = r'C:\Users\k67885\Documents\EyeGaze\game_session.avi' #make it dynamic
+    screen_spec_path = CWD / "calibration" / "screen_spec.json"
 
     device = select_device()
 
@@ -328,6 +334,34 @@ if __name__ == "__main__":
         include_head_pose=False,
     )
 
+    # Screen specifications
+    screen = read_screen_specs(screen_spec_path)
+    # print(f"{screen=}")
+
+    ar_uco_detector = ArucoDetector(
+        marker_real_width=4.0, calibration_file="calibration/calibration_results.json"
+    )
+    # Initialize mapper
+    mapper = GazeMapper(screen)
+
+    # Print visible range info
+    visible_range = mapper.get_visible_range()
+    # print("\n--- Visible Range ---")
+    # print(
+    #     f"Max Yaw: ±{visible_range['max_yaw_rad']:.3f} rad (±{visible_range['max_yaw_deg']:.1f}°)"
+    # )
+    # print(
+    #     f"Max Pitch: ±{visible_range['max_pitch_rad']:.3f} rad (±{visible_range['max_pitch_deg']:.1f}°)"
+    # )
+    # print(
+    #     f"Screen dimensions: {visible_range['screen_width_cm']}x{visible_range['screen_height_cm']} cm"
+    # )
+    # print(
+    #     f"Screen resolution: {visible_range['screen_width_px']}x{visible_range['screen_height_px']} pixels"
+    # )
+    # print(f"Distance from screen: {visible_range['distance_cm']} cm")
+    # print("----------------------")
+
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert("RGB")
@@ -343,14 +377,18 @@ if __name__ == "__main__":
             draw_head_pose=False,
             draw_gaze=True,
             output_mode=args.output,
+            mapper=mapper,
+            ar_detector=ar_uco_detector,
+            marker_id=42,
         )
     else:
-        # print(args.cam_id)
-        # If neither image nor video is provided, use webcam
         process_webcam(
             args.cam_id,
             gaze_estimator,
             draw_head_pose=False,
             draw_gaze=True,
             output_mode=args.output,
+            mapper=mapper,
+            ar_detector=ar_uco_detector,
+            marker_id=42,
         )
