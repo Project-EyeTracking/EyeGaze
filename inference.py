@@ -241,13 +241,13 @@ def process_video(
         csv_writer = csv.writer(csv_file)
         csv_writer.writerow([
             "Frame",
-            "Time(s)",
+            "Time",
             "Pitch(rad)",
             "Yaw(rad)",
             "Pitch(deg)",
             "Yaw(deg)",
-            "ScreenX(px)",
-            "ScreenY(px)",
+            "ScreenX",
+            "ScreenY",
             "Distance(cm)",
         ])
 
@@ -314,7 +314,7 @@ if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
     output_path = CWD / 'output'
-    args.video_path = r'C:\Users\k67885\Documents\EyeGaze\output\GameVideo_Horizontal_Medium1738074854.avi' #make it dynamic
+    args.video_path = r'C:\Users\k67885\Documents\EyeGaze\output\GameVideo_Horizontal_Medium1738079657.avi' #make it dynamic
     screen_spec_path = CWD / "calibration" / "screen_spec.json"
 
     device = select_device()

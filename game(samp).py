@@ -143,6 +143,7 @@ def game():
 
     # OpenCV setup for webcam recording
     cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     # cap.set(cv2.CAP_PROP_FPS, 20)
@@ -165,7 +166,7 @@ def game():
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Game Data"
-    sheet.append(["Frame", "Time (s)", "X", "Y", "Speed_X", "Speed_Y"])  # Add headers
+    sheet.append(["Frame", "Time", "ScreenX", "ScreenY", "SpeedX", "SpeedY"])  # Add headers
 
     # Game loop
     running = True
@@ -200,13 +201,13 @@ def game():
             obj_x += speed_x
             if obj_x <= 0 or obj_x >= WIDTH - obj_width:
                 speed_x *= -1
-                obj_y += random.randint(10,70)
+                obj_y += random.randint(300,350)
 
         if movement_type in ("Both", "Vertical"):
             obj_y += speed_y
             if obj_y <= 0 or obj_y >= HEIGHT - obj_height:
                 speed_y *= -1
-                obj_x += random.randint(10,70)
+                obj_x += random.randint(300,350)
 
         # Draw object
         pygame.draw.rect(screen, RED, (obj_x, obj_y, obj_width, obj_height))
