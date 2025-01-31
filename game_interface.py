@@ -191,7 +191,7 @@ class MovementTracker:
         csv_path.parent.mkdir(exist_ok=True)
         csv_file = open(csv_path, "w", newline="")
         writer = csv.writer(csv_file)
-        writer.writerow(["Frame", "Time", "X", "Y", "Speed_X", "Speed_Y"])
+        writer.writerow(["Frame", "Time", "GameX", "GameY", "Speed_X", "Speed_Y"])
 
         return cap, out, writer, csv_file
 
