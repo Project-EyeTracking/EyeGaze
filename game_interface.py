@@ -24,9 +24,10 @@ class GameConfig:
 class MovementTracker:
     """Main game class handling movement tracking and recording."""
 
-    def __init__(self, spec_file: str):
+    def __init__(self, spec_file: str, game_duration: int = 20):
         pygame.init()
         self.spec_file = spec_file
+        self.game_duration = game_duration
         self.config = self._load_config()
         self.screen = pygame.display.set_mode((self.config.width, self.config.height))
         pygame.display.set_caption("Object Movement Tracker")
@@ -39,6 +40,7 @@ class MovementTracker:
         """Load game configuration from JSON and return GameConfig object."""
         with open(self.spec_file) as file:
             data = json.load(file)
+
         return GameConfig(
             width=data.get("width_pixels"),
             height=data.get("height_pixels") - 100,
@@ -49,7 +51,7 @@ class MovementTracker:
                 "GRAY": (200, 200, 200),
             },
             speed_values={"Slow": 2, "Medium": 6, "Fast": 12},
-            game_duration=20,
+            game_duration=self.game_duration,
         )
 
     def _create_button(
@@ -151,16 +153,22 @@ class MovementTracker:
                         self.speed_choice = selected_speed
                         running = False
 
-    def setup_recording(self) -> Tuple[cv2.VideoCapture, cv2.VideoWriter, csv.writer]:
+    def setup_recording(
+        self,
+        camera_id: int = 0,
+        frame_width: int = 1920,
+        frame_height: int = 1080,
+        frame_rate: int = 30,
+    ) -> Tuple[cv2.VideoCapture, cv2.VideoWriter, csv.writer]:
         """Setup video capture and CSV recording."""
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(camera_id)
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
         if not cap.isOpened():
             raise RuntimeError("Unable to access webcam.")
 
-        # Set webcam resolution to 720p
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        # Set webcam resolution to 1080p
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
 
         # Setup video writer with MP4 format and H.264 codec
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
@@ -171,8 +179,8 @@ class MovementTracker:
         )
         video_path.parent.mkdir(exist_ok=True)
         out = cv2.VideoWriter(
-            str(video_path), fourcc, 30.0, (1280, 720)
-        )  # 30 FPS, 720p resolution
+            str(video_path), fourcc, frame_rate, (frame_width, frame_height)
+        )  # 30 FPS, 1080p resolution
 
         # Setup CSV writer
         csv_path = (
@@ -185,18 +193,18 @@ class MovementTracker:
         writer = csv.writer(csv_file)
         writer.writerow(["Frame", "Time", "X", "Y", "Speed_X", "Speed_Y"])
 
-        return cap, out, writer
+        return cap, out, writer, csv_file
 
     def game(self):
         """Main game loop."""
         obj_pos = {"x": 400, "y": 300}
-        obj_size = {"width": 20, "height": 20}
+        obj_size = {"width": 30, "height": 30}
         speed = {
             "x": self.config.speed_values[self.speed_choice],
             "y": self.config.speed_values[self.speed_choice],
         }
 
-        cap, video_writer, csv_writer = self.setup_recording()
+        cap, video_writer, csv_writer, csv_file = self.setup_recording()
 
         running = True
         clock = pygame.time.Clock()
@@ -218,9 +226,10 @@ class MovementTracker:
                     self._log_data(csv_writer, frame_count, elapsed_time, obj_pos, speed)
 
                 pygame.display.flip()
-                clock.tick(60)
+                clock.tick(30)
 
         finally:
+            csv_file.close()
             cap.release()
             video_writer.release()
             cv2.destroyAllWindows()
@@ -249,13 +258,13 @@ class MovementTracker:
             obj_pos["x"] += speed["x"]
             if obj_pos["x"] <= 0 or obj_pos["x"] >= self.config.width - obj_size["width"]:
                 speed["x"] *= -1
-                obj_pos["y"] += random.randint(10, 70)  # nosec
+                obj_pos["y"] += random.randint(100, 150)  # nosec
 
         if self.movement_type in ("Both", "Vertical"):
             obj_pos["y"] += speed["y"]
             if obj_pos["y"] <= 0 or obj_pos["y"] >= self.config.height - obj_size["height"]:
                 speed["y"] *= -1
-                obj_pos["x"] += random.randint(10, 70)  # nosec
+                obj_pos["x"] += random.randint(100, 150)  # nosec
 
     def _draw_frame(self, obj_pos: Dict[str, int], obj_size: Dict[str, int], elapsed_time: float):
         """Draw game frame."""
@@ -278,11 +287,9 @@ class MovementTracker:
         """Record webcam frame and return whether frame was successfully recorded."""
         ret, frame = cap.read()
         if ret:
-            # Ensure frame is in 720p resolution
-            frame = cv2.resize(frame, (1280, 720))
             frame = cv2.flip(frame, 1)
-
             video_writer.write(frame)
+
             # Display in a smaller window for convenience
             display_frame = cv2.resize(frame, (640, 360))
             cv2.imshow("Webcam", display_frame)
