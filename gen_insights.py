@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from filterpy.kalman import KalmanFilter
 from scipy.signal import savgol_filter
+from scipy.spatial.distance import euclidean
+from scipy.stats import pearsonr
 
 
 def load_data(file1, file2):
@@ -77,6 +79,11 @@ def apply_smoothing(x, y, method="moving_average", **kwargs):
                 x_smooth[i] = kf.x[0]
                 y_smooth[i] = kf.x[1]
 
+    elif method == "ema":
+        alpha = kwargs.get("alpha", 0.2)  # Smoothing factor (0 < alpha <= 1)
+        x_smooth = x.ewm(alpha=alpha, adjust=False).mean()
+        y_smooth = y.ewm(alpha=alpha, adjust=False).mean()
+
     return x_smooth, y_smooth
 
 
@@ -131,6 +138,49 @@ def plot_coordinates(game_coords, processed_coords, smoothed_coords):
     plt.show()
 
 
+def compute_metrics(game_coords, smoothed_coords):
+    """Compute tracking performance metrics."""
+    game_x, game_y = np.array(game_coords[0]), np.array(game_coords[1])
+    gaze_x, gaze_y = np.array(smoothed_coords[0]), np.array(smoothed_coords[1])
+
+    # 1. Mean Absolute Error
+    # Measures the average absolute difference between gaze-tracked coordinates and game object coordinates.
+    # Lower values indicate better tracking accuracy
+    mae = np.mean(np.abs(gaze_x - game_x) + np.abs(gaze_y - game_y))
+
+    # 2. Root Mean Squared Error (RMSE)
+    rmse = np.sqrt(np.mean((gaze_x - game_x) ** 2 + (gaze_y - game_y) ** 2))
+
+    # 3. Cross-Correlation Between Gaze and Object Trajectory
+    # Measures how well the gaze trajectory follows the object movement over time.
+    # A high correlation (closer to 1) means the gaze movement aligns well with the object movement.
+    corr_x, _ = pearsonr(game_x, gaze_x)
+    corr_y, _ = pearsonr(game_y, gaze_y)
+
+    # 4. Gaze Jitter (Variance of Position Changes)
+    # Measures how much the gaze position fluctuates within short time intervals.
+    # High jitter indicates noisy tracking, while low jitter suggests stable gaze tracking.
+    jitter = np.mean(np.diff(gaze_x) ** 2 + np.diff(gaze_y) ** 2)
+
+    # 5. Gaze Drift (Final Distance from Object)
+    # Measures how far the gaze drifts away from the object over time.
+    drift = euclidean((game_x[-1], game_y[-1]), (gaze_x[-1], gaze_y[-1]))
+
+    # # 6. Percentage of Time on Target (PTT)
+    # threshold = 50  # Define acceptable tracking error (in pixels)
+    # within_threshold = np.sum(np.sqrt((gaze_x - game_x)**2 + (gaze_y - game_y)**2) < threshold)
+    # ptt = (within_threshold / len(game_x)) * 100  # Percentage
+
+    # Print results
+    print("Tracking Metrics:")
+    print(f"MAE: {mae:.2f} pixels")
+    print(f"RMSE: {rmse:.2f} pixels")
+    print(f"Cross-Correlation X: {corr_x:.2f}, Y: {corr_y:.2f}")
+    print(f"Gaze Jitter: {jitter:.2f} pixels")
+    print(f"Gaze Drift: {drift:.2f} pixels")
+    # print(f"Percentage of Time on Target (PTT): {ptt:.2f}%")
+
+
 def main():
     # # Horizontal movement data
     # file1 = "output/Game_Horizontal_Medium_1738079657.csv"
@@ -146,6 +196,8 @@ def main():
     smoothed_coords = apply_smoothing(
         processed_coords[0], processed_coords[1], method="kalman", window_size=5
     )
+
+    compute_metrics(game_coords, smoothed_coords)
 
     plot_coordinates(game_coords, processed_coords, smoothed_coords)
 
