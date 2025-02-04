@@ -5,12 +5,16 @@ from filterpy.kalman import KalmanFilter
 from scipy.signal import savgol_filter
 from scipy.spatial.distance import euclidean
 from scipy.stats import pearsonr
+import time
 
 
 def load_data(file1, file2):
     """Load and extract coordinate data from two CSV files."""
-    game_data = pd.read_csv(file1)
+    game_data = pd.read_excel(file1)
     processed_data = pd.read_csv(file2)
+    
+    global time_file
+    time_file = str(file1).split('_')[-1]
 
     game_coords = (game_data["GameX"], game_data["GameY"])
     processed_coords = (processed_data["ScreenX"], processed_data["ScreenY"])
@@ -134,7 +138,8 @@ def plot_coordinates(game_coords, processed_coords, smoothed_coords):
 
     # Adjust layout
     plt.tight_layout()
-    plt.savefig("output/trajectory_plot.png", dpi=300, bbox_inches="tight")
+    plot_path = f'output/trajectory_plot_{time_file}.png'
+    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -181,26 +186,26 @@ def compute_metrics(game_coords, smoothed_coords):
     # print(f"Percentage of Time on Target (PTT): {ptt:.2f}%")
 
 
-def main():
-    # # Horizontal movement data
-    # file1 = "output/Game_Horizontal_Medium_1738079657.csv"
-    # file2 = "output/processed_coordinates_1738275859.csv"
+# def main():
+#     # # Horizontal movement data
+#     # file1 = "output/Game_Horizontal_Medium_1738079657.csv"
+#     # file2 = "output/processed_coordinates_1738275859.csv"
 
-    # Vertical movement data
-    file1 = "output/Game_Vertical_Medium_1738079713.csv"
-    file2 = "output/processed_coordinates_1738079713.csv"
+#     # Vertical movement data
+#     file1 = "output/Game_Horizontal_Medium_1738678116.xlsx"
+#     file2 = "output/processed_coordinates_1738678166.csv"
 
-    game_coords, processed_coords = load_data(file1, file2)
-    # print(f"{processed_coords=}")
+#     game_coords, processed_coords = load_data(file1, file2)
+#     # print(f"{processed_coords=}")
 
-    smoothed_coords = apply_smoothing(
-        processed_coords[0], processed_coords[1], method="kalman", window_size=5
-    )
+#     smoothed_coords = apply_smoothing(
+#         processed_coords[0], processed_coords[1], method="kalman", window_size=5
+#     )
 
-    compute_metrics(game_coords, smoothed_coords)
+#     compute_metrics(game_coords, smoothed_coords)
 
-    plot_coordinates(game_coords, processed_coords, smoothed_coords)
+#     plot_coordinates(game_coords, processed_coords, smoothed_coords)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

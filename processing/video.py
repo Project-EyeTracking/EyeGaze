@@ -41,7 +41,8 @@ def process_video(
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # CSV setup
-    csv_file_path = CWD / "output" / f"processed_coordinates_{int(time.time())}.csv"
+    time_file = str(video_path).split('_')[-1]
+    csv_file_path = CWD / "output" / f"Processed_Coordinates_{time_file}.csv"
     csv_file_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_file_path, mode="w", newline="")
     csv_writer = csv.writer(csv_file)
@@ -156,3 +157,6 @@ def process_video(
             print(f"Processed video saved to: {output_path}")
         if output_mode in ["visualize", "both"]:
             cv2.destroyAllWindows()
+
+    
+    return csv_file_path

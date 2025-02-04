@@ -1,355 +1,266 @@
+from openpyxl import Workbook
+import pygame
+import cv2
 import csv
+import time
 import json
 import pathlib
 import random
-import time
-from dataclasses import dataclass
-from typing import Dict, Literal, Tuple
-import cv2
-import pygame
 
+CWD = pathlib.Path.cwd()
+pygame.init()
 
-@dataclass
-class GameConfig:
-    """Configuration settings for the game."""
+# Get screen dimensions from screen_spec.json dynamically
+screen_spec_path = CWD / 'calibration' / 'screen_spec.json'
+with open(screen_spec_path, 'r') as file:
+    data = json.load(file)
 
-    width: int
-    height: int
-    colors: Dict[str, Tuple[int, int, int]]
-    speed_values: Dict[str, int]
-    game_duration: int
+WIDTH = data.get('width_pixels')
+HEIGHT = data.get('height_pixels') - 100  # Adjust for some UI element space
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Object Movement Tracker")
 
+# Colors
+BLACK = (255, 255, 255)  
+RED = (255, 0, 0)
+WHITE = (0, 0, 0)
+GRAY = (200, 200, 200)
 
-class MovementTracker:
-    """Main game class handling movement tracking and recording."""
+# Font
+font = pygame.font.Font(None, 36)
 
-    def __init__(self, spec_file: str, game_duration: int = 20):
-        pygame.init()
-        self.spec_file = spec_file
-        self.game_duration = game_duration
-        self.config = self._load_config()
-        self.screen = pygame.display.set_mode((self.config.width, self.config.height))
-        pygame.display.set_caption("Object Movement Tracker")
-        self.font = pygame.font.Font(None, 36)
-        self.movement_type = "Both"
-        self.speed_choice = "Medium"
-        self.cwd = pathlib.Path.cwd()
+# Variables to store user choices
+movement_type = "Both"  # Default movement type
+speed_choice = "Medium"  # Default speed
+speed_values = {"Slow": 2, "Medium": 6, "Fast": 12}  # Speed mapping
+game_duration = 20
 
+def _show_wait_message():
+    """Display a fun 'Please wait...' message before starting the game."""
+    screen.fill(WHITE)
     
+    wait_message_lines = [
+        "Please wait...",
+        "Our webcam needs a moment to get camera-ready!",
+        "It's finding its best angle and practicing its selfie smile!"
+    ]
     
-    def _show_wait_message(self) -> None:
-        """Display a fun 'Please wait...' message before starting the game."""
-        self.screen.fill(self.config.colors["WHITE"])
-        
-        wait_message_lines = [
-            "Please wait...",
-            "Our webcam needs a moment to get camera-ready!",
-            "It's finding it's best angle and practicing it's selfie smile!"
-        ]
-        
-        # Display each line of the message centered on the screen
-        for i, line in enumerate(wait_message_lines):
-            text_surface = self.font.render(line, True, self.config.colors["BLACK"])
-            self.screen.blit(
-                text_surface,
-                (
-                    self.config.width // 2 - text_surface.get_width() // 2,
-                    self.config.height // 2 - text_surface.get_height() // 2 + i * 30,
-                ),
-            )
-        
+    # Display each line of the message centered on the screen
+    for i, line in enumerate(wait_message_lines):
+        text_surface = font.render(line, True, BLACK)
+        screen.blit(
+            text_surface,
+            (
+                WIDTH // 2 - text_surface.get_width() // 2,
+                HEIGHT // 2 - text_surface.get_height() // 2 + i * 30,
+            ),
+        )
+    
+    pygame.display.flip()
+    pygame.time.delay(3000)  # Wait for 3 seconds
+
+def setup_screen():
+    global movement_type, speed_choice
+
+    running = True
+    selected_movement = "Both"  # Default selection
+    selected_speed = "Medium"  # Default speed selection
+
+    # Calculate dynamic positions
+    button_width, button_height = 150, 50
+    center_x = WIDTH // 2
+    center_y = HEIGHT // 2
+
+    # Vertical positions for buttons
+    movement_y_start = center_y - 100  # Starting y-position for movement buttons
+    speed_y_start = center_y + 50     # Starting y-position for speed buttons
+    start_button_y = center_y + 150   # y-position for the "Start" button
+
+    while running:
+        screen.fill(WHITE)
+        title = font.render("Select Movement and Speed", True, BLACK)
+        screen.blit(title, (center_x - title.get_width() // 2, 50))
+
+        # Buttons for movement type
+        pygame.draw.rect(screen, GRAY if selected_movement == "Both" else WHITE, 
+                         (center_x - 225, movement_y_start, button_width, button_height))
+        both_text = font.render("Both", True, BLACK)
+        screen.blit(both_text, (center_x - 225 + 20, movement_y_start + 10))
+
+        pygame.draw.rect(screen, GRAY if selected_movement == "Horizontal" else WHITE, 
+                         (center_x - 75, movement_y_start, button_width, button_height))
+        horizontal_text = font.render("Horizontal", True, BLACK)
+        screen.blit(horizontal_text, (center_x - 75 + 20, movement_y_start + 10))
+
+        pygame.draw.rect(screen, GRAY if selected_movement == "Vertical" else WHITE, 
+                         (center_x + 75, movement_y_start, button_width, button_height))
+        vertical_text = font.render("Vertical", True, BLACK)
+        screen.blit(vertical_text, (center_x + 75 + 20, movement_y_start + 10))
+
+        # Buttons for speed options
+        pygame.draw.rect(screen, GRAY if selected_speed == "Slow" else WHITE, 
+                         (center_x - 225, speed_y_start, button_width, button_height))
+        slow_text = font.render("Slow", True, BLACK)
+        screen.blit(slow_text, (center_x - 225 + 20, speed_y_start + 10))
+
+        pygame.draw.rect(screen, GRAY if selected_speed == "Medium" else WHITE, 
+                         (center_x - 75, speed_y_start, button_width, button_height))
+        medium_text = font.render("Medium", True, BLACK)
+        screen.blit(medium_text, (center_x - 75 + 20, speed_y_start + 10))
+
+        pygame.draw.rect(screen, GRAY if selected_speed == "Fast" else WHITE, 
+                         (center_x + 75, speed_y_start, button_width, button_height))
+        fast_text = font.render("Fast", True, BLACK)
+        screen.blit(fast_text, (center_x + 75 + 20, speed_y_start + 10))
+
+        # Start button
+        pygame.draw.rect(screen, GRAY, (center_x - button_width // 2, start_button_y, button_width, button_height))
+        start_text = font.render("Start", True, BLACK)
+        screen.blit(start_text, (center_x - start_text.get_width() // 2, start_button_y + 10))
+
         pygame.display.flip()
-        pygame.time.delay(3000)  # Wait for 3 seconds
-        
-        
-    def _load_config(self) -> GameConfig:
-        """Load game configuration from JSON and return GameConfig object."""
-        with open(self.spec_file) as file:
-            data = json.load(file)
 
-        return GameConfig(
-            width=data.get("width_pixels"),
-            height=data.get("height_pixels") - 100,
-            colors={
-                "BLACK": (255, 255, 255),
-                "RED": (255, 0, 0),
-                "WHITE": (0, 0, 0),
-                "GRAY": (200, 200, 200),
-            },
-            speed_values={"Slow": 2, "Medium": 6, "Fast": 12},
-            game_duration=self.game_duration,
-        )
-
-    def _create_button(
-        self, text: str, position: Tuple[int, int], size: Tuple[int, int], is_selected: bool
-    ) -> pygame.Rect:
-        """Create and draw a button."""
-        button_rect = pygame.Rect(position, size)
-        pygame.draw.rect(
-            self.screen,
-            self.config.colors["GRAY"] if is_selected else self.config.colors["WHITE"],
-            button_rect,
-        )
-        text_surface = self.font.render(text, True, self.config.colors["BLACK"])
-        text_rect = text_surface.get_rect(center=button_rect.center)
-        self.screen.blit(text_surface, text_rect)
-        return button_rect
-
-    def setup_screen(self):
-        """Setup initial game screen with movement and speed selection."""
-        running = True
-        selected_movement = "Both"
-        selected_speed = "Medium"
-
-        button_size = (150, 50)
-        center_x = self.config.width // 2
-        movement_y = self.config.height // 2 - 100
-        speed_y = self.config.height // 2 + 50
-        start_y = self.config.height // 2 + 150
-
-        while running:
-            self.screen.fill(self.config.colors["WHITE"])
-
-            # Draw title
-            title = self.font.render(
-                "Select Movement and Speed", True, self.config.colors["BLACK"]
-            )
-            self.screen.blit(title, (center_x - title.get_width() // 2, 50))
-
-            # Create movement buttons
-            movement_buttons = {
-                "Both": self._create_button(
-                    "Both", (center_x - 225, movement_y), button_size, selected_movement == "Both"
-                ),
-                "Horizontal": self._create_button(
-                    "Horizontal",
-                    (center_x - 75, movement_y),
-                    button_size,
-                    selected_movement == "Horizontal",
-                ),
-                "Vertical": self._create_button(
-                    "Vertical",
-                    (center_x + 75, movement_y),
-                    button_size,
-                    selected_movement == "Vertical",
-                ),
-            }
-
-            # Create speed buttons
-            speed_buttons = {
-                "Slow": self._create_button(
-                    "Slow", (center_x - 225, speed_y), button_size, selected_speed == "Slow"
-                ),
-                "Medium": self._create_button(
-                    "Medium", (center_x - 75, speed_y), button_size, selected_speed == "Medium"
-                ),
-                "Fast": self._create_button(
-                    "Fast", (center_x + 75, speed_y), button_size, selected_speed == "Fast"
-                ),
-            }
-
-            # Create start button
-            start_button = self._create_button(
-                "Start", (center_x - button_size[0] // 2, start_y), button_size, False
-            )
-
-            pygame.display.flip()
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = event.pos
-
-                    # Check movement buttons
-                    for movement, rect in movement_buttons.items():
-                        if rect.collidepoint(pos):
-                            selected_movement = movement
-
-                    # Check speed buttons
-                    for speed, rect in speed_buttons.items():
-                        if rect.collidepoint(pos):
-                            selected_speed = speed
-
-                    # Check start button
-                    if start_button.collidepoint(pos):
-                        self.movement_type = selected_movement
-                        self.speed_choice = selected_speed
-                        running = False
-
-    def setup_recording(
-        self,
-        camera_id: int = 0,
-        frame_width: int = 1920,
-        frame_height: int = 1080,
-        frame_rate: int = 30,
-    ) -> Tuple[cv2.VideoCapture, cv2.VideoWriter, csv.writer]:
-        """Setup video capture and CSV recording."""
-        cap = cv2.VideoCapture(camera_id)
-        cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-        if not cap.isOpened():
-            raise RuntimeError("Unable to access webcam.")
-
-        # Set webcam resolution to 1080p
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
-
-        # Setup video writer with MP4 format and H.264 codec
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        video_path = (
-            self.cwd
-            / "output"
-            / f"GameVideo_{self.movement_type}_{self.speed_choice}_{int(time.time())}.mp4"
-        )
-        video_path.parent.mkdir(exist_ok=True)
-        out = cv2.VideoWriter(
-            str(video_path), fourcc, frame_rate, (frame_width, frame_height)
-        )  # 30 FPS, 1080p resolution
-
-        # Setup CSV writer
-        csv_path = (
-            self.cwd
-            / "output"
-            / f"Game_{self.movement_type}_{self.speed_choice}_{int(time.time())}.csv"
-        )
-        csv_path.parent.mkdir(exist_ok=True)
-        csv_file = open(csv_path, "w", newline="")
-        writer = csv.writer(csv_file)
-        writer.writerow(["Frame", "Time", "GameX", "GameY", "Speed_X", "Speed_Y"])
-
-        return cap, out, writer, csv_file
-
-    def game(self):
-        """Main game loop."""
-        
-        self._show_wait_message()  
-        obj_pos = {"x": 400, "y": 300}
-        obj_size = {"width": 30, "height": 30}
-        speed = {
-            "x": self.config.speed_values[self.speed_choice],
-            "y": self.config.speed_values[self.speed_choice],
-        }
-
-        cap, video_writer, csv_writer, csv_file = self.setup_recording()
-
-        running = True
-        clock = pygame.time.Clock()
-        start_time = time.time()
-        frame_count = 0
-
-        try:
-            while running:
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= self.config.game_duration:
-                    print("Game session ended.")
-                    break
-
-                self._handle_events()
-                self._update_object_position(obj_pos, obj_size, speed)
-                self._draw_frame(obj_pos, obj_size, elapsed_time)
-                if self._record_frame(cap, video_writer):
-                    frame_count += 1
-                    self._log_data(csv_writer, frame_count, elapsed_time, obj_pos, speed)
-
-                pygame.display.flip()
-                clock.tick(30)
-
-        finally:
-            csv_file.close()
-            cap.release()
-            video_writer.release()
-            cv2.destroyAllWindows()
-            pygame.quit()
-
-    def _handle_events(self):
-        """Handle pygame events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
 
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                # Check which button is clicked
+                if center_x - 225 <= x <= center_x - 225 + button_width and movement_y_start <= y <= movement_y_start + button_height:
+                    selected_movement = "Both"
+                elif center_x - 75 <= x <= center_x - 75 + button_width and movement_y_start <= y <= movement_y_start + button_height:
+                    selected_movement = "Horizontal"
+                elif center_x + 75 <= x <= center_x + 75 + button_width and movement_y_start <= y <= movement_y_start + button_height:
+                    selected_movement = "Vertical"
+
+                # Check which speed is selected
+                if center_x - 225 <= x <= center_x - 225 + button_width and speed_y_start <= y <= speed_y_start + button_height:
+                    selected_speed = "Slow"
+                elif center_x - 75 <= x <= center_x - 75 + button_width and speed_y_start <= y <= speed_y_start + button_height:
+                    selected_speed = "Medium"
+                elif center_x + 75 <= x <= center_x + 75 + button_width and speed_y_start <= y <= speed_y_start + button_height:
+                    selected_speed = "Fast"
+
+                # Check if "Start" is clicked
+                if center_x - button_width // 2 <= x <= center_x + button_width // 2 and start_button_y <= y <= start_button_y + button_height:
+                    movement_type = selected_movement
+                    speed_choice = selected_speed
+                    running = False
+
+def game():
+    global movement_type
+    #_show_wait_message()  # Show wait message before starting the game
+
+    obj_x, obj_y = 400, 300
+    obj_width, obj_height = 30, 30
+    speed_x = speed_values[speed_choice]
+    speed_y = speed_values[speed_choice]
+
+    # OpenCV setup for webcam recording
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+    if not cap.isOpened():
+        print("Error: Unable to access webcam.")
+        return
+
+    # Video writer setup
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    game_video_csv_file_path = CWD / "output" / f'GameVideo_{movement_type}_{speed_choice}{int(time.time())}.avi'
+    game_video_csv_file_path.parent.mkdir(exist_ok=True)
+    fps = 30.0
+    frame_size = (640, 480)
+    out = cv2.VideoWriter(str(game_video_csv_file_path), fourcc, fps, frame_size)
+
+    # Excel setup
+    game_excel_file_path = CWD / "output" / f'Game_{movement_type}_{speed_choice}_{int(time.time())}.xlsx'
+    game_excel_file_path.parent.mkdir(exist_ok=True)
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Game Data"
+    sheet.append(["Frame", "Time", "GameX", "GameY", "SpeedX", "SpeedY"])  # Add headers
+
+    # Game loop
+    running = True
+    clock = pygame.time.Clock()
+    start_time = time.time()
+    frame_counter = 0
+
+    while running:
+        elapsed_time = time.time() - start_time
+        if elapsed_time >= game_duration:
+            print("Game session ended.")
+            break
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            # Allow user to change movement type during gameplay
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_h:
-                    self.movement_type = "Horizontal"
+                    movement_type = "Horizontal"
                 elif event.key == pygame.K_v:
-                    self.movement_type = "Vertical"
+                    movement_type = "Vertical"
                 elif event.key == pygame.K_b:
-                    self.movement_type = "Both"
+                    movement_type = "Both"
 
-    def _update_object_position(
-        self, obj_pos: Dict[str, int], obj_size: Dict[str, int], speed: Dict[str, int]
-    ):
-        """Update object position based on movement type."""
-        if self.movement_type in ("Both", "Horizontal"):
-            obj_pos["x"] += speed["x"]
-            #obj_pos["y"] += speed["x"]
-            if obj_pos["x"] <= 0 or obj_pos["x"] >= self.config.width - obj_size["width"]:
-                speed["x"] *= -1
-                obj_pos["y"] += random.randint(5, 8)  # nosec
+        # Clear screen
+        screen.fill(WHITE)
 
-        if self.movement_type in ("Both", "Vertical"):
-            obj_pos["y"] += speed["y"]
-            if obj_pos["y"] <= 0 or obj_pos["y"] >= self.config.height - obj_size["height"]:
-                speed["y"] *= -1
-                obj_pos["x"] += random.randint(5, 8)  # nosec
+        # Move object based on selected movement type
+        if movement_type in ("Both", "Horizontal"):
+            obj_x += speed_x
+            if obj_x <= 0 or obj_x >= WIDTH - obj_width:
+                speed_x *= -1
+                obj_y += random.randint(5, 8)
 
-    def _draw_frame(self, obj_pos: Dict[str, int], obj_size: Dict[str, int], elapsed_time: float):
-        """Draw game frame."""
-        self.screen.fill(self.config.colors["WHITE"])
-        pygame.draw.rect(
-            self.screen,
-            self.config.colors["RED"],
-            (obj_pos["x"], obj_pos["y"], obj_size["width"], obj_size["height"]),
-        )
+        if movement_type in ("Both", "Vertical"):
+            obj_y += speed_y
+            if obj_y <= 0 or obj_y >= HEIGHT - obj_height:
+                speed_y *= -1
+                obj_x += random.randint(5, 8) 
 
-        time_remaining = self.config.game_duration - elapsed_time
-        info_text = self.font.render(
-            f"Movement: {self.movement_type} | Speed: {self.speed_choice} | Time Left: {int(time_remaining)}s",
+        # Draw object
+        pygame.draw.rect(screen, RED, (obj_x, obj_y, obj_width, obj_height))
+
+        # Display movement and time remaining
+        time_remaining = game_duration - elapsed_time
+        info_text = font.render(
+            f"Movement: {movement_type} | Speed: {speed_choice} | Time Left: {int(time_remaining)}s",
             True,
-            self.config.colors["BLACK"],
+            BLACK,
         )
-        self.screen.blit(info_text, (10, 10))
+        screen.blit(info_text, (10, 10))
 
-    def _record_frame(self, cap: cv2.VideoCapture, video_writer: cv2.VideoWriter) -> bool:
-        """Record webcam frame and return whether frame was successfully recorded."""
+        # Capture webcam frame and write to video
         ret, frame = cap.read()
         if ret:
             frame = cv2.flip(frame, 1)
-            video_writer.write(frame)
-
-            # Display in a smaller window for convenience
+            out.write(frame)
+            # Display smaller frame
             display_frame = cv2.resize(frame, (640, 360))
-            cv2.imshow("Webcam", display_frame)
-        return ret
+            cv2.imshow('Webcam', display_frame)
 
-    def _log_data(
-        self,
-        csv_writer: csv.writer,
-        frame_number: int,
-        elapsed_time: float,
-        obj_pos: Dict[str, int],
-        speed: Dict[str, int],
-    ):
-        """Log game data to CSV."""
-        csv_writer.writerow(
-            [
-                frame_number,
-                round(elapsed_time, 2),
-                obj_pos["x"],
-                obj_pos["y"],
-                speed["x"],
-                speed["y"],
-            ]
-        )
+        # Log data into Excel
+        frame_counter += 1
+        sheet.append([frame_counter, round(elapsed_time, 2), obj_x, obj_y, speed_x, speed_y])
 
+        # Update display
+        pygame.display.flip()
+        clock.tick(30)
 
-def main():
-    game = MovementTracker(spec_file="calibration/screen_spec.json")
-    game.setup_screen()
-    game.game()
+    # Save the Excel file
+    workbook.save(str(game_excel_file_path))
+    print(f"Excel file saved at: {game_excel_file_path}")
 
+    # Release OpenCV resources
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    pygame.quit()
 
-if __name__ == "__main__":
-    main()
+setup_screen()
+game()

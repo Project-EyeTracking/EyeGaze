@@ -9,6 +9,9 @@ from PIL import Image
 from calibration import ArucoDetector, GazeMapper, read_screen_specs
 from l2cs import L2CS, GazeEstimator
 from processing import process_image, process_video, process_webcam
+from gen_insights import load_data, apply_smoothing,  compute_metrics, plot_coordinates
+
+from game import setup_screen, game
 
 CWD = pathlib.Path.cwd()
 
@@ -79,7 +82,22 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+def insights(file1, file2):
 
+
+    game_coords, processed_coords = load_data(file1, file2)
+    # print(f"{processed_coords=}")
+
+    smoothed_coords = apply_smoothing(
+        processed_coords[0], processed_coords[1], method="kalman", window_size=5
+    )
+
+    compute_metrics(game_coords, smoothed_coords)
+
+    plot_coordinates(game_coords, processed_coords, smoothed_coords)
+    
+    
+    
 if __name__ == "__main__":
     args = parse_args()
     model_path = CWD / "models" / "L2CSNet_gaze360.pkl"
@@ -121,14 +139,20 @@ if __name__ == "__main__":
         f"Max Pitch: ±{visible_range['max_pitch_rad']:.3f} rad (±{visible_range['max_pitch_deg']:.1f}°)"
     )
     print(
-        f"Screen dimensions: {visible_range['screen_width_cm']}x{visible_range['screen_height_cm']} cm"
+        f"Screen dimensions: {visible_range['screen_width_cm']} x {visible_range['screen_height_cm']} cm"
     )
     print(
-        f"Screen resolution: {visible_range['screen_width_px']}x{visible_range['screen_height_px']} pixels"
+        f"Screen resolution: {visible_range['screen_width_px']} x {visible_range['screen_height_px']} pixels"
     )
     print(f"Distance from screen: {visible_range['distance_cm']} cm")
     print("----------------------")
-
+    
+    
+    
+    
+    # setup_screen()
+    # game_file, game_video_file = game()
+    # args.video_path = game_video_file
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert("RGB")
@@ -138,7 +162,7 @@ if __name__ == "__main__":
 
     elif args.video_path:
         # Process video file
-        process_video(
+        inference_output = process_video(
             args.video_path,
             gaze_estimator,
             draw_head_pose=False,
@@ -160,3 +184,8 @@ if __name__ == "__main__":
             ar_detector=ar_uco_detector,
             marker_id=42,
         )
+
+
+
+    
+    #insights(game_file, inference_output)
