@@ -5,7 +5,6 @@ import random
 import time
 from dataclasses import dataclass
 from typing import Dict, Literal, Tuple
-
 import cv2
 import pygame
 
@@ -36,6 +35,33 @@ class MovementTracker:
         self.speed_choice = "Medium"
         self.cwd = pathlib.Path.cwd()
 
+    
+    
+    def _show_wait_message(self) -> None:
+        """Display a fun 'Please wait...' message before starting the game."""
+        self.screen.fill(self.config.colors["WHITE"])
+        
+        wait_message_lines = [
+            "Please wait...",
+            "Our webcam needs a moment to get camera-ready!",
+            "It's finding it's best angle and practicing it's selfie smile!"
+        ]
+        
+        # Display each line of the message centered on the screen
+        for i, line in enumerate(wait_message_lines):
+            text_surface = self.font.render(line, True, self.config.colors["BLACK"])
+            self.screen.blit(
+                text_surface,
+                (
+                    self.config.width // 2 - text_surface.get_width() // 2,
+                    self.config.height // 2 - text_surface.get_height() // 2 + i * 30,
+                ),
+            )
+        
+        pygame.display.flip()
+        pygame.time.delay(3000)  # Wait for 3 seconds
+        
+        
     def _load_config(self) -> GameConfig:
         """Load game configuration from JSON and return GameConfig object."""
         with open(self.spec_file) as file:
@@ -45,9 +71,9 @@ class MovementTracker:
             width=data.get("width_pixels"),
             height=data.get("height_pixels") - 100,
             colors={
-                "WHITE": (255, 255, 255),
+                "BLACK": (255, 255, 255),
                 "RED": (255, 0, 0),
-                "BLACK": (0, 0, 0),
+                "WHITE": (0, 0, 0),
                 "GRAY": (200, 200, 200),
             },
             speed_values={"Slow": 2, "Medium": 6, "Fast": 12},
@@ -197,6 +223,8 @@ class MovementTracker:
 
     def game(self):
         """Main game loop."""
+        
+        self._show_wait_message()  
         obj_pos = {"x": 400, "y": 300}
         obj_size = {"width": 30, "height": 30}
         speed = {
@@ -256,15 +284,16 @@ class MovementTracker:
         """Update object position based on movement type."""
         if self.movement_type in ("Both", "Horizontal"):
             obj_pos["x"] += speed["x"]
+            #obj_pos["y"] += speed["x"]
             if obj_pos["x"] <= 0 or obj_pos["x"] >= self.config.width - obj_size["width"]:
                 speed["x"] *= -1
-                obj_pos["y"] += random.randint(100, 150)  # nosec
+                obj_pos["y"] += random.randint(5, 8)  # nosec
 
         if self.movement_type in ("Both", "Vertical"):
             obj_pos["y"] += speed["y"]
             if obj_pos["y"] <= 0 or obj_pos["y"] >= self.config.height - obj_size["height"]:
                 speed["y"] *= -1
-                obj_pos["x"] += random.randint(100, 150)  # nosec
+                obj_pos["x"] += random.randint(5, 8)  # nosec
 
     def _draw_frame(self, obj_pos: Dict[str, int], obj_size: Dict[str, int], elapsed_time: float):
         """Draw game frame."""
