@@ -78,8 +78,13 @@ class GazeMapper:
         Returns:
             Tuple[float, float]: (x, y) coordinates in centimeters
         """
-        x = -self.screen.distance_cm * np.tan(yaw)
-        y = -self.screen.distance_cm * np.tan(pitch)
+        # vertical_scaling_factor = (self.screen.width_cm / self.screen.height_cm) * (self.screen.width_pixels / self.screen.height_pixels)
+        # vertical_scaling_factor = self.screen.height_cm / self.screen.width_cm
+        # vertical_scaling_factor = 1.2
+        # x = -self.screen.distance_cm * np.tan(yaw)
+        # y = -self.screen.distance_cm * np.tan(pitch) * vertical_scaling_factor
+        x = -self.screen.distance_cm * np.sin(yaw) * np.cos(pitch)
+        y = -self.screen.distance_cm * np.sin(pitch)
         return x, y
 
     def _cm_to_pixels(self, x_cm: float, y_cm: float) -> Tuple[int, int]:

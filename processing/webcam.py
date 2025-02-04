@@ -15,7 +15,7 @@ def process_webcam(
     ar_detector=None,
     marker_id=None,
 ):
-    cap = cv2.VideoCapture(cam_id)
+    cap = cv2.VideoCapture(cam_id, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
@@ -51,10 +51,10 @@ def process_webcam(
 
                 x, y = mapper.angles_to_screen_point(pitch, yaw)
 
-                print(
-                    f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
-                )
-                print(f"Screen point: ({x}, {y}) pixels")
+                # print(
+                #     f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
+                # )
+                # print(f"Screen point: ({x}, {y}) pixels")
 
                 mapper.visualize_gaze_point(x, y)
 

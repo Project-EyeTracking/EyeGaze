@@ -150,9 +150,9 @@ if __name__ == "__main__":
     
     
     
-    # setup_screen()
-    # game_file, game_video_file = game()
-    # args.video_path = game_video_file
+    setup_screen()
+    game_file, game_video_file = game()
+    args.video_path = game_video_file
     if args.image_path:
         # Load and prepare the image
         image = Image.open(args.image_path).convert("RGB")
@@ -188,4 +188,4 @@ if __name__ == "__main__":
 
 
     
-    #insights(game_file, inference_output)
+    insights(game_file, inference_output)
