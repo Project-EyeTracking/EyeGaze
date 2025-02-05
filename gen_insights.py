@@ -199,8 +199,12 @@ def generate_insight_plots(file1, file2):
 
 if __name__ == "__main__":
 
-    # Vertical movement data
-    file1 = "output/game_coordinates_1738764024.csv"
-    file2 = "output/processed_coordinates_1738764024.csv"
+    # # horizontal movement data
+    # game_file = "output/game_coordinates_1738772966.csv"
+    # processed_file = "output/processed_coordinates_1738772966.csv"
 
-    generate_insight_plots(file1, file2)
+    # vertical movement data
+    game_file = "output/game_coordinates_1738773281.csv"
+    processed_file = "output/processed_coordinates_1738773281.csv"
+
+    generate_insight_plots(game_file, processed_file)
