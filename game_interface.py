@@ -233,12 +233,12 @@ def game(camera_id=0, frame_width=640, frame_height=480):
     # Video writer setup
     fourcc = cv2.VideoWriter_fourcc(*"XVID")
     time_now = int(time.time())
-    game_video_file_path = CWD / "output" / f"Game_Video_{time_now}.avi"
+    game_video_file_path = CWD / "output" / f"game_video_{time_now}.avi"
     game_video_file_path.parent.mkdir(exist_ok=True)
     out = cv2.VideoWriter(str(game_video_file_path), fourcc, fps, (frame_width, frame_height))
 
     # CSV setup
-    csv_path = CWD / "output" / f"Game_Coordinates_{time_now}.csv"
+    csv_path = CWD / "output" / f"game_coordinates_{time_now}.csv"
     csv_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_path, "w", newline="")
     writer = csv.writer(csv_file)
@@ -300,21 +300,18 @@ def game(camera_id=0, frame_width=640, frame_height=480):
         # Capture webcam frame and write to video
         ret, frame = cap.read()
         if ret:
-            frame = cv2.flip(frame, 1)
             out.write(frame)
             # cv2.imshow('Webcam', frame)
 
         # Log data into CSV
         frame_counter += 1
-        # sheet.append([frame_counter, round(elapsed_time, 2), obj_x, obj_y, speed_x, speed_y])
         writer.writerow([frame_counter, round(elapsed_time, 2), obj_x, obj_y, speed_x, speed_y])
 
         # Update display
         pygame.display.flip()
         clock.tick(fps)
 
-    # Save the Excel file
-    # workbook.save(str(game_excel_file_path))
+    # Save the CSV file
     csv_file.close()
     print(f"CSV file saved at: {csv_path}")
 

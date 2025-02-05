@@ -78,8 +78,8 @@ def process_video(
             processed_frame, distances = ar_detector.process_frame(frame)
             mapper.screen.distance_cm = distances.get(marker_id, 0.0)
 
-            # # Mirror the frame horizontally
-            # frame = cv2.flip(frame, 1)
+            # Mirror the frame horizontally
+            frame = cv2.flip(frame, 1)
 
             # Perform gaze estimation
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

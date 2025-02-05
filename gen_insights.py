@@ -182,19 +182,11 @@ def compute_metrics(game_coords, smoothed_coords):
     # print(f"Percentage of Time on Target (PTT): {ptt:.2f}%")
 
 
-def main():
-    # # Horizontal movement data
-    # file1 = "output/Game_Horizontal_Medium_1738079657.csv"
-    # file2 = "output/processed_coordinates_1738275859.csv"
-
-    # Vertical movement data
-    file1 = "output/Game_Vertical_Medium_1738079713.csv"
-    file2 = "output/processed_coordinates_1738079713.csv"
+def generate_insight_plots(file1, file2):
 
     title = str(file1).split("_")[-1][:-4]
 
     game_coords, processed_coords = load_data(file1, file2)
-    # print(f"{processed_coords=}")
 
     smoothed_coords = apply_smoothing(
         processed_coords[0], processed_coords[1], method="kalman", window_size=5
@@ -206,4 +198,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+    # Vertical movement data
+    file1 = "output/game_coordinates_1738764024.csv"
+    file2 = "output/processed_coordinates_1738764024.csv"
+
+    generate_insight_plots(file1, file2)
