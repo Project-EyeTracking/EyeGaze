@@ -20,6 +20,12 @@ with open(screen_spec_path) as file:
 WIDTH = data.get("width_pixels")
 HEIGHT = data.get("height_pixels") - 100
 
+# Calculate the 25% and 75% boundaries for both width and height
+LEFT_BOUNDARY = WIDTH * 0.25
+RIGHT_BOUNDARY = WIDTH * 0.75
+TOP_BOUNDARY = HEIGHT * 0.25
+BOTTOM_BOUNDARY = HEIGHT * 0.75
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Object Movement Tracker")
 
@@ -35,8 +41,13 @@ font = pygame.font.Font(None, 36)
 # Variables to store user choices
 movement_type = "Both"  # Default movement type
 speed_choice = "Medium"  # Default speed
-speed_values = {"Slow": 2, "Medium": 6, "Fast": 8}  # Speed mapping
+speed_values = {"Slow": 2, "Medium": 4, "Fast": 8}  # Speed mapping
 game_duration = 40
+
+# Amount to move vertically in horizontal mode
+VERTICAL_STEP = 100
+# Amount to move horizontally in vertical mode
+HORIZONTAL_STEP = 100
 
 
 def _show_wait_message():
@@ -65,6 +76,7 @@ def _show_wait_message():
 
 
 def setup_screen():
+    """Set up the game configuration screen."""
     global movement_type, speed_choice
 
     running = True
@@ -199,27 +211,37 @@ def setup_screen():
 
 
 def game(camera_id=0, frame_width=640, frame_height=480):
-    # Object settings
+    """Main game loop with object movement and video capture."""
     global movement_type
     _show_wait_message()
-    obj_x, obj_y = 400, 300
+
+    # Initialize object dimensions
     obj_width, obj_height = 30, 30
+
+    # Initialize object position at the center of the restricted area
+    obj_x = LEFT_BOUNDARY
+    obj_y = TOP_BOUNDARY
+
     speed_x = speed_values[speed_choice]
     speed_y = speed_values[speed_choice]
 
-    # Determine the backend based on the platform
+    # New variables for zigzag movement
+    moving_right = True
+    moving_down = True
+
+    # Platform-specific camera setup
     system_platform = platform.system()
-    if system_platform == "Darwin":  # macOS
+    if system_platform == "Darwin":
         backend = cv2.CAP_AVFOUNDATION
-    elif system_platform == "Linux":  # Linux
+    elif system_platform == "Linux":
         backend = cv2.CAP_V4L2
     else:
-        backend = cv2.CAP_DSHOW  # Default Windows backend
+        backend = cv2.CAP_DSHOW
 
     cap = cv2.VideoCapture(camera_id, backend)
     cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
 
-    # Set webcam resolution to 1080p
+    # Set webcam resolution
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
 
@@ -260,30 +282,68 @@ def game(camera_id=0, frame_width=640, frame_height=480):
             if event.type == pygame.QUIT:
                 running = False
 
-            # Allow user to change movement type during gameplay
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_h:
                     movement_type = "Horizontal"
+                    obj_y = (TOP_BOUNDARY + BOTTOM_BOUNDARY) / 2
                 elif event.key == pygame.K_v:
                     movement_type = "Vertical"
+                    obj_x = (LEFT_BOUNDARY + RIGHT_BOUNDARY) / 2
                 elif event.key == pygame.K_b:
                     movement_type = "Both"
 
-        # Clear screen
         screen.fill(WHITE)
 
-        # Move object based on selected movement type
-        if movement_type in ("Both", "Horizontal"):
-            obj_x += speed_x
-            if obj_x <= 0 or obj_x >= WIDTH - obj_width:
-                speed_x *= -1
-                obj_y += random.randint(100, 150)  # nosec
+        # Modified movement logic
+        if movement_type == "Horizontal":
+            # Horizontal zigzag movement
+            if moving_right:
+                obj_x += speed_x
+                if obj_x >= WIDTH - obj_width:
+                    moving_right = False
+                    obj_y += VERTICAL_STEP
+                    if obj_y >= HEIGHT - obj_height:
+                        obj_y = HEIGHT - obj_height
+            else:
+                obj_x -= speed_x
+                if obj_x <= 0:
+                    moving_right = True
+                    obj_y += VERTICAL_STEP
+                    if obj_y >= HEIGHT - obj_height:
+                        obj_y = HEIGHT - obj_height
 
-        if movement_type in ("Both", "Vertical"):
-            obj_y += speed_y
-            if obj_y <= 0 or obj_y >= HEIGHT - obj_height:
-                speed_y *= -1
-                obj_x += random.randint(100, 150)  # nosec
+        elif movement_type == "Vertical":
+            # Vertical zigzag movement
+            if moving_down:
+                obj_y += speed_y
+                if obj_y >= HEIGHT - obj_height:
+                    moving_down = False
+                    obj_x += HORIZONTAL_STEP
+                    if obj_x >= WIDTH - obj_width:
+                        obj_x = WIDTH - obj_width
+            else:
+                obj_y -= speed_y
+                if obj_y <= 0:
+                    moving_down = True
+                    obj_x += HORIZONTAL_STEP
+                    if obj_x >= WIDTH - obj_width:
+                        obj_x = WIDTH - obj_width
+
+        elif movement_type == "Both":
+            # Original "Both" movement logic
+            if "Both" in (movement_type, "Horizontal"):
+                obj_x += speed_x
+                if obj_x <= 0 or obj_x >= WIDTH - obj_width:
+                    speed_x *= -1
+                    new_y = obj_y + random.randint(-100, 100)  # nosec
+                    obj_y = max(0, min(HEIGHT - obj_height, new_y))
+
+            if "Both" in (movement_type, "Vertical"):
+                obj_y += speed_y
+                if obj_y <= 0 or obj_y >= HEIGHT - obj_height:
+                    speed_y *= -1
+                    new_x = obj_x + random.randint(-100, 100)  # nosec
+                    obj_x = max(0, min(WIDTH - obj_width, new_x))
 
         # Draw object
         pygame.draw.rect(screen, RED, (obj_x, obj_y, obj_width, obj_height))
@@ -301,7 +361,6 @@ def game(camera_id=0, frame_width=640, frame_height=480):
         ret, frame = cap.read()
         if ret:
             out.write(frame)
-            # cv2.imshow('Webcam', frame)
 
         # Log data into CSV
         frame_counter += 1
