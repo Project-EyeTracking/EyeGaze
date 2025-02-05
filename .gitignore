@@ -6,6 +6,8 @@ no-commit
 __pycache__/
 *.py[cod]
 *$py.class
+output
+eye
 
 # C extensions
 *.so
