@@ -87,7 +87,7 @@ def apply_smoothing(x, y, method="moving_average", **kwargs):
     return x_smooth, y_smooth
 
 
-def plot_coordinates(game_coords, processed_coords, smoothed_coords):
+def plot_coordinates(game_coords, processed_coords, smoothed_coords, title):
     """Create and display the coordinate plot."""
     fig = plt.figure(figsize=(8, 10))
     gs = fig.add_gridspec(3, 1)
@@ -134,7 +134,8 @@ def plot_coordinates(game_coords, processed_coords, smoothed_coords):
 
     # Adjust layout
     plt.tight_layout()
-    plt.savefig("output/trajectory_plot.png", dpi=300, bbox_inches="tight")
+    plot_path = f"output/trajectory_plot_{title}.png"
+    plt.savefig(plot_path, dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -190,6 +191,8 @@ def main():
     file1 = "output/Game_Vertical_Medium_1738079713.csv"
     file2 = "output/processed_coordinates_1738079713.csv"
 
+    title = str(file1).split("_")[-1][:-4]
+
     game_coords, processed_coords = load_data(file1, file2)
     # print(f"{processed_coords=}")
 
@@ -199,7 +202,7 @@ def main():
 
     compute_metrics(game_coords, smoothed_coords)
 
-    plot_coordinates(game_coords, processed_coords, smoothed_coords)
+    plot_coordinates(game_coords, processed_coords, smoothed_coords, title)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,9 @@ def process_video(
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # CSV setup
-    csv_file_path = CWD / "output" / f"processed_coordinates_{int(time.time())}.csv"
+    csv_file_path = (
+        CWD / "output" / f"processed_coordinates_{str(video_path).split('_')[-1][:-4]}.csv"
+    )
     csv_file_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_file_path, mode="w", newline="")
     csv_writer = csv.writer(csv_file)
@@ -76,8 +78,8 @@ def process_video(
             processed_frame, distances = ar_detector.process_frame(frame)
             mapper.screen.distance_cm = distances.get(marker_id, 0.0)
 
-            # Mirror the frame horizontally
-            frame = cv2.flip(frame, 1)
+            # # Mirror the frame horizontally
+            # frame = cv2.flip(frame, 1)
 
             # Perform gaze estimation
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
