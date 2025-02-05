@@ -2,6 +2,7 @@ import time
 
 import cv2
 import numpy as np
+import platform
 
 from l2cs import render
 
@@ -14,11 +15,28 @@ def process_webcam(
     mapper=None,
     ar_detector=None,
     marker_id=None,
+    width=640,
+    height=480,
 ):
-    cap = cv2.VideoCapture(cam_id)
+    # Determine the backend based on the platform
+    system_platform = platform.system()
+    if system_platform == "Darwin":  # macOS
+        backend = cv2.CAP_AVFOUNDATION
+    elif system_platform == "Linux":  # Linux
+        backend = cv2.CAP_V4L2
+    else:
+        backend = cv2.CAP_DSHOW  # Default Windows backend
+
+    cap = cv2.VideoCapture(cam_id, backend)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+
     if not cap.isOpened():
         print(f"Error: Could not open webcam with ID {cam_id}")
         return
+    
+    # Set the desired resolution
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
     # FPS calculation variables
     frame_times = []
@@ -31,6 +49,10 @@ def process_webcam(
         if not ret:
             print("Error: Failed to capture frame")
             break
+
+        # # Print frame width and height
+        # height, width, _ = frame.shape
+        # print(f"Frame Width: {width}, Frame Height: {height}")
 
         processed_frame, distances = ar_detector.process_frame(frame)
         mapper.screen.distance_cm = distances.get(marker_id, 0.0)
@@ -51,10 +73,10 @@ def process_webcam(
 
                 x, y = mapper.angles_to_screen_point(pitch, yaw)
 
-                print(
-                    f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
-                )
-                print(f"Screen point: ({x}, {y}) pixels")
+                # print(
+                #     f"\nGaze angles (yaw={np.degrees(yaw):.1f}° [{yaw:.3f} rad], pitch={np.degrees(pitch):.1f}° [{pitch:.3f} rad])"
+                # )
+                # print(f"Screen point: ({x}, {y}) pixels")
 
                 mapper.visualize_gaze_point(x, y)
 
