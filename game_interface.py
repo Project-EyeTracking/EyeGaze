@@ -210,7 +210,7 @@ def setup_screen():
                     running = False
 
 
-def game(camera_id=0, frame_width=640, frame_height=480):
+def game(camera_id=0, frame_width=640, frame_height=480, game_video_file_path=None, csv_path=None):
     """Main game loop with object movement and video capture."""
     global movement_type
     _show_wait_message()
@@ -253,14 +253,16 @@ def game(camera_id=0, frame_width=640, frame_height=480):
         return
 
     # Video writer setup
-    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     time_now = int(time.time())
-    game_video_file_path = CWD / "output" / f"game_video_{time_now}.avi"
+    if game_video_file_path is None:
+        game_video_file_path = CWD / "output" / "game_video" / f"game_video_{time_now}.mp4"
     game_video_file_path.parent.mkdir(exist_ok=True)
     out = cv2.VideoWriter(str(game_video_file_path), fourcc, fps, (frame_width, frame_height))
 
     # CSV setup
-    csv_path = CWD / "output" / f"game_coordinates_{time_now}.csv"
+    if csv_path is None:
+        csv_path = CWD / "output" / "game_csv" / f"game_coordinates_{time_now}.csv"
     csv_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_path, "w", newline="")
     writer = csv.writer(csv_file)
@@ -384,5 +386,15 @@ def game(camera_id=0, frame_width=640, frame_height=480):
 
 
 if __name__ == "__main__":
+    time_now = int(time.time())
+    game_video_file_path = CWD / "output" / "game_video" / f"game_video_{time_now}.mp4"
+    csv_path = CWD / "output" / "game_csv" / f"game_coordinates_{time_now}.csv"
+
     setup_screen()
-    game()
+    game(
+        camera_id=0,
+        frame_width=640,
+        frame_height=480,
+        game_video_file_path=game_video_file_path,
+        csv_path=csv_path,
+    )

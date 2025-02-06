@@ -137,6 +137,12 @@ if __name__ == "__main__":
         )
 
     elif args.video_path:
+        csv_file_path = (
+            CWD
+            / "output"
+            / "processed_csv"
+            / f"processed_coordinates_{str(args.video_path).split('_')[-1][:-4]}.csv"
+        )
         # Process video file
         process_video(
             args.video_path,
@@ -147,6 +153,7 @@ if __name__ == "__main__":
             mapper=mapper,
             ar_detector=ar_uco_detector,
             marker_id=42,
+            csv_file_path=csv_file_path,
         )
     else:
         # print(args.cam_id)
