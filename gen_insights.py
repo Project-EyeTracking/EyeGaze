@@ -1,3 +1,6 @@
+import json
+import pathlib
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -134,12 +137,13 @@ def plot_coordinates(game_coords, processed_coords, smoothed_coords, title):
 
     # Adjust layout
     plt.tight_layout()
-    plot_path = f"output/trajectory_plot_{title}.png"
+    plot_path = f"output/plot/trajectory_plot_{title}.png"
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
-    plt.show()
+
+    return fig
 
 
-def compute_metrics(game_coords, smoothed_coords):
+def compute_metrics(game_coords, smoothed_coords, timestamp):
     """Compute tracking performance metrics."""
     game_x, game_y = np.array(game_coords[0]), np.array(game_coords[1])
     gaze_x, gaze_y = np.array(smoothed_coords[0]), np.array(smoothed_coords[1])
@@ -172,19 +176,42 @@ def compute_metrics(game_coords, smoothed_coords):
     # within_threshold = np.sum(np.sqrt((gaze_x - game_x)**2 + (gaze_y - game_y)**2) < threshold)
     # ptt = (within_threshold / len(game_x)) * 100  # Percentage
 
-    # Print results
-    print("Tracking Metrics:")
-    print(f"MAE: {mae:.2f} pixels")
-    print(f"RMSE: {rmse:.2f} pixels")
-    print(f"Cross-Correlation X: {corr_x:.2f}, Y: {corr_y:.2f}")
-    print(f"Gaze Jitter: {jitter:.2f} pixels")
-    print(f"Gaze Drift: {drift:.2f} pixels")
-    # print(f"Percentage of Time on Target (PTT): {ptt:.2f}%")
+    # Create metrics dictionary
+    metrics = {
+        "timestamp": timestamp,
+        "metrics": {
+            "MAE": float(f"{mae:.2f}"),
+            "RMSE": float(f"{rmse:.2f}"),
+            "Cross_Correlation_X": float(f"{corr_x:.2f}"),
+            "Cross_Correlation_Y": float(f"{corr_y:.2f}"),
+            "Gaze_Jitter": float(f"{jitter:.2f}"),
+            "Gaze_Drift": float(f"{drift:.2f}"),
+        },
+    }
+
+    return metrics
+
+
+def save_metrics(metrics, output_dir="output/metrics"):
+    """Save metrics to a JSON file with timestamp."""
+    # Create output directory if it doesn't exist
+    output_dir = pathlib.Path(output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    # Create filename with timestamp
+    filename = f"metrics_{metrics['timestamp']}.json"
+    filepath = output_dir / filename
+
+    # Save metrics to JSON file
+    with open(filepath, "w") as f:
+        json.dump(metrics, f, indent=4)
+
+    return filepath
 
 
 def generate_insight_plots(file1, file2):
 
-    title = str(file1).split("_")[-1][:-4]
+    timestamp = str(file1).split("_")[-1][:-4]
 
     game_coords, processed_coords = load_data(file1, file2)
 
@@ -192,9 +219,14 @@ def generate_insight_plots(file1, file2):
         processed_coords[0], processed_coords[1], method="kalman", window_size=5
     )
 
-    compute_metrics(game_coords, smoothed_coords)
+    # Compute and save metrics
+    metrics = compute_metrics(game_coords, smoothed_coords, timestamp)
+    metrics_file = save_metrics(metrics)
 
-    plot_coordinates(game_coords, processed_coords, smoothed_coords, title)
+    # Generate plots
+    figures = plot_coordinates(game_coords, processed_coords, smoothed_coords, timestamp)
+
+    return figures, metrics
 
 
 if __name__ == "__main__":
@@ -204,7 +236,7 @@ if __name__ == "__main__":
     # processed_file = "output/processed_coordinates_1738772966.csv"
 
     # vertical movement data
-    game_file = "output/game_coordinates_1738773281.csv"
-    processed_file = "output/processed_coordinates_1738773281.csv"
+    game_file = "output/game_csv/game_coordinates_1738773281.csv"
+    processed_file = "output/processed_csv/processed_coordinates_1738773281.csv"
 
-    generate_insight_plots(game_file, processed_file)
+    _, _ = generate_insight_plots(game_file, processed_file)

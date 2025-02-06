@@ -19,6 +19,7 @@ def process_video(
     mapper=None,
     ar_detector=None,
     marker_id=None,
+    csv_file_path=None,
 ):
 
     cap = cv2.VideoCapture(video_path)
@@ -34,16 +35,20 @@ def process_video(
 
     out = None
     if output_mode in ["save", "both"]:
-        output_dir = CWD / "output"
+        output_dir = CWD / "output" / "processed_video"
         output_dir.mkdir(exist_ok=True)
         output_path = output_dir / f"processed_video_{int(time.time())}.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
 
     # CSV setup
-    csv_file_path = (
-        CWD / "output" / f"processed_coordinates_{str(video_path).split('_')[-1][:-4]}.csv"
-    )
+    if csv_file_path is None:
+        csv_file_path = (
+            CWD
+            / "output"
+            / "processed_csv"
+            / f"processed_coordinates_{str(video_path).split('_')[-1][:-4]}.csv"
+        )
     csv_file_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_file_path, mode="w", newline="")
     csv_writer = csv.writer(csv_file)
