@@ -62,14 +62,14 @@ def main():
                     hit_time.append(t2)
                     break
     avg_accuracy = sum(hit_accuracy)/len(instruction_df['time'])
-    print(f"hit_accuracy: {hit_accuracy}")
+    #print(f"hit_accuracy: {hit_accuracy}")
     print(f"avg_accuracy: {avg_accuracy}")    
 
     avg_latency = sum(latency)/len(instruction_df['time'])
-    print(f"latency: {latency}")
+    #print(f"latency: {latency}")
     print(f"avg_latency: {avg_latency}")    
-    print(f"{hit_x},{hit_y}")   
-    print(f"{hit_time}") 
+    #print(f"{hit_x},{hit_y}")   
+    #print(f"{hit_time}") 
 
     return hit_accuracy, latency, hit_time, hit_x, hit_y      
 
