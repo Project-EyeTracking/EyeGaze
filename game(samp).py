@@ -1,10 +1,10 @@
 import csv
 import json
+import math
 import pathlib
 import platform
 import random
 import time
-import math
 
 import cv2
 import pygame
@@ -40,8 +40,8 @@ GRAY = (200, 200, 200)
 font = pygame.font.Font(None, 36)
 
 # Variables to store user choices
-movement_type = "Both"   # Default movement type
-speed_choice = "Medium"    # Default speed
+movement_type = "Both"  # Default movement type
+speed_choice = "Medium"  # Default speed
 speed_values = {"Slow": 2, "Medium": 4, "Fast": 8}  # Speed mapping (pixels per frame)
 game_duration = 50
 
@@ -78,7 +78,7 @@ def setup_screen():
 
     running = True
     selected_movement = "Both"  # Default selection
-    selected_speed = "Medium"   # Default speed selection
+    selected_speed = "Medium"  # Default speed selection
 
     # Calculate dynamic positions
     button_width, button_height = 150, 50
@@ -172,39 +172,55 @@ def setup_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
                 # Movement type selection
-                if (center_x - 225 <= x <= center_x - 225 + button_width and
-                    movement_y_start <= y <= movement_y_start + button_height):
+                if (
+                    center_x - 225 <= x <= center_x - 225 + button_width
+                    and movement_y_start <= y <= movement_y_start + button_height
+                ):
                     selected_movement = "Both"
-                elif (center_x - 75 <= x <= center_x - 75 + button_width and
-                      movement_y_start <= y <= movement_y_start + button_height):
+                elif (
+                    center_x - 75 <= x <= center_x - 75 + button_width
+                    and movement_y_start <= y <= movement_y_start + button_height
+                ):
                     selected_movement = "Horizontal"
-                elif (center_x + 75 <= x <= center_x + 75 + button_width and
-                      movement_y_start <= y <= movement_y_start + button_height):
+                elif (
+                    center_x + 75 <= x <= center_x + 75 + button_width
+                    and movement_y_start <= y <= movement_y_start + button_height
+                ):
                     selected_movement = "Vertical"
-                elif (center_x + 225 <= x <= center_x + 225 + button_width and
-                      movement_y_start <= y <= movement_y_start + button_height):
+                elif (
+                    center_x + 225 <= x <= center_x + 225 + button_width
+                    and movement_y_start <= y <= movement_y_start + button_height
+                ):
                     selected_movement = "Diagonal"
 
                 # Speed selection
-                if (center_x - 225 <= x <= center_x - 225 + button_width and
-                    speed_y_start <= y <= speed_y_start + button_height):
+                if (
+                    center_x - 225 <= x <= center_x - 225 + button_width
+                    and speed_y_start <= y <= speed_y_start + button_height
+                ):
                     selected_speed = "Slow"
-                elif (center_x - 75 <= x <= center_x - 75 + button_width and
-                      speed_y_start <= y <= speed_y_start + button_height):
+                elif (
+                    center_x - 75 <= x <= center_x - 75 + button_width
+                    and speed_y_start <= y <= speed_y_start + button_height
+                ):
                     selected_speed = "Medium"
-                elif (center_x + 75 <= x <= center_x + 75 + button_width and
-                      speed_y_start <= y <= speed_y_start + button_height):
+                elif (
+                    center_x + 75 <= x <= center_x + 75 + button_width
+                    and speed_y_start <= y <= speed_y_start + button_height
+                ):
                     selected_speed = "Fast"
 
                 # Start button click
-                if (center_x - button_width // 2 <= x <= center_x + button_width // 2 and
-                    start_button_y <= y <= start_button_y + button_height):
+                if (
+                    center_x - button_width // 2 <= x <= center_x + button_width // 2
+                    and start_button_y <= y <= start_button_y + button_height
+                ):
                     movement_type = selected_movement
                     speed_choice = selected_speed
                     running = False
 
 
-def game(camera_id=0, frame_width=640, frame_height=480):
+def game(camera_id=0, frame_width=640, frame_height=480, game_video_file_path=None, csv_path=None):
     """Main game loop with interactive icon movement and video capture."""
     global movement_type
     _show_wait_message()
@@ -219,11 +235,12 @@ def game(camera_id=0, frame_width=640, frame_height=480):
         diagonal_t = 0.0
         diagonal_direction = 1  # 1 means moving from top right to bottom left; -1 means reverse.
         obj_x = (WIDTH - obj_width) * (1 - diagonal_t)  # = WIDTH - obj_width when t=0
-        obj_y = (HEIGHT - obj_height) * diagonal_t         # = 0 when t=0
+        obj_y = (HEIGHT - obj_height) * diagonal_t  # = 0 when t=0
     else:
         # Otherwise, start at the center.
-        obj_x = (WIDTH - obj_width) // 2
-        obj_y = (HEIGHT - obj_height) // 2
+        # Initialize object position at the center of the restricted area
+        obj_x = LEFT_BOUNDARY
+        obj_y = TOP_BOUNDARY
         # For non-diagonal modes, these diagonal variables are not used.
         diagonal_t = None
         diagonal_direction = None
@@ -270,14 +287,16 @@ def game(camera_id=0, frame_width=640, frame_height=480):
         return
 
     # Video writer setup
-    fourcc = cv2.VideoWriter_fourcc(*"XVID")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     time_now = int(time.time())
-    game_video_file_path = CWD / "output" / f"game_video_{time_now}.avi"
+    if game_video_file_path is None:
+        game_video_file_path = CWD / "output" / "game_video" / f"game_video_{time_now}.mp4"
     game_video_file_path.parent.mkdir(exist_ok=True)
     out = cv2.VideoWriter(str(game_video_file_path), fourcc, fps, (frame_width, frame_height))
 
     # CSV setup
-    csv_path = CWD / "output" / f"game_coordinates_{time_now}.csv"
+    if csv_path is None:
+        csv_path = CWD / "output" / "game_csv" / f"game_coordinates_{time_now}.csv"
     csv_path.parent.mkdir(exist_ok=True)
     csv_file = open(csv_path, "w", newline="")
     writer = csv.writer(csv_file)
@@ -323,8 +342,13 @@ def game(camera_id=0, frame_width=640, frame_height=480):
             # Check for icon clicks to add extra interactivity
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_x, mouse_y = event.pos
-                if obj_x <= mouse_x <= obj_x + obj_width and obj_y <= mouse_y <= obj_y + obj_height:
-                    print("You clicked the icon!")  # Extend with sound or visual feedback as desired.
+                if (
+                    obj_x <= mouse_x <= obj_x + obj_width
+                    and obj_y <= mouse_y <= obj_y + obj_height
+                ):
+                    print(
+                        "You clicked the icon!"
+                    )  # Extend with sound or visual feedback as desired.
 
         screen.fill(WHITE)
 
@@ -457,5 +481,15 @@ def game(camera_id=0, frame_width=640, frame_height=480):
 
 
 if __name__ == "__main__":
+    time_now = int(time.time())
+    game_video_file_path = CWD / "output" / "game_video" / f"game_video_{time_now}.mp4"
+    csv_path = CWD / "output" / "game_csv" / f"game_coordinates_{time_now}.csv"
+
     setup_screen()
-    game()
+    game(
+        camera_id=0,
+        frame_width=640,
+        frame_height=480,
+        game_video_file_path=game_video_file_path,
+        csv_path=csv_path,
+    )
