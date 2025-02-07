@@ -31,9 +31,9 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Interactive Icon Tracker")
 
 # Colors
-BLACK = (255, 255, 255)
+WHITE = (255, 255, 255)
 RED = (255, 0, 0)  # fallback color if icon not loaded
-WHITE = (0, 0, 0)
+BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 
 # Font
@@ -42,7 +42,7 @@ font = pygame.font.Font(None, 36)
 # Variables to store user choices
 movement_type = "Both"  # Default movement type
 speed_choice = "Medium"  # Default speed
-speed_values = {"Slow": 2, "Medium": 4, "Fast": 8}  # Speed mapping (pixels per frame)
+speed_values = {"Slow": 1, "Medium": 3, "Fast": 5}  # Speed mapping (pixels per frame)
 game_duration = 50
 
 # Amount to move vertically in horizontal mode (each drop is 100 pixels)
