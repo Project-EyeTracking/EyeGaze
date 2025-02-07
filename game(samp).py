@@ -31,9 +31,9 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Interactive Icon Tracker")
 
 # Colors
-WHITE = (255, 255, 255)
+BLACK = (255, 255, 255)
 RED = (255, 0, 0)  # fallback color if icon not loaded
-BLACK = (0, 0, 0)
+WHITE = (0, 0, 0)
 GRAY = (200, 200, 200)
 
 # Font
@@ -381,18 +381,12 @@ def game(camera_id=0, frame_width=640, frame_height=480, game_video_file_path=No
             # Vertical zigzag: move vertically until a boundary,
             # then slide horizontally 100 pixels gradually and reverse vertical direction.
             if horizontal_shift_remaining > 0:
-                shift_step = min(speed_x, horizontal_shift_remaining)
-                if shift_right:
-                    obj_x += shift_step
-                else:
-                    obj_x -= shift_step
-                horizontal_shift_remaining -= shift_step
+                drop_step = min(speed_x, horizontal_shift_remaining)
+                obj_x += drop_step
+                horizontal_shift_remaining -= drop_step
                 if obj_x >= WIDTH - obj_width:
                     obj_x = WIDTH - obj_width
-                    horizontal_shift_remaining = 0
-                elif obj_x <= 0:
-                    obj_x = 0
-                    horizontal_shift_remaining = 0
+                    vertical_drop_remaining = 0
             else:
                 if moving_down:
                     obj_y += speed_y
