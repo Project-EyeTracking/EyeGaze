@@ -93,13 +93,18 @@ def main(filename):
                 entry = j+1            # once an obs datapoint is assosiated with an inst datapoint only the next datapoints of obs shall be considered for future inst points
                 break 
                     # if no hit occurs in the sliding window the entry becomes the next frame parallel to inst datapoint
-             
-    accuracy = len(hit_distance)/len(instruction_df['Time'])*100
+
+    try:
+        accuracy = len(hit_distance)/len(instruction_df['Time'])*100
+        avg_latency = sum(latency) / len(latency)
+    except ZeroDivisionError:
+        print("Error: no hits")
+        accuracy = 0
+        avg_latency = None
 
     print(f"filename: {filename}\n-------------------")
     print(f"accuracy: {accuracy}")    
 
-    avg_latency = sum(latency) / len(latency)
     print(f"avg_latency: {avg_latency}\n")  
 
     logs = {"accuracy":accuracy,"latency":avg_latency} 
@@ -183,7 +188,16 @@ if __name__ == "__main__":
     WD = os.getcwd()
 
     files = os.listdir(f"{WD}\output\game_csv")
-    filenames = []
+    already_processed =  os.listdir(f"{WD}\insights\\video_plots")
+
+    done = []
+
+    for i in already_processed:
+        i=i.split('.')
+        i = i[0]
+        
+        done.append(i)
+
 
     for i in files:
         i=i.split('_')
@@ -192,14 +206,15 @@ if __name__ == "__main__":
 
         filename = i
         
-        hit_distance, latency, hit_time, hit_x, hit_y, instruction_df, observation_df = main(filename)
+        if i not in done:
+            hit_distance, latency, hit_time, hit_x, hit_y, instruction_df, observation_df = main(filename)
 
-        # Extract instruction and observation points
-        inst_time = instruction_df['Time']
-        inst_x = instruction_df['GameX']
-        inst_y = instruction_df['GameY']
-        obs_time = observation_df['Time_sec']
-        obs_x = observation_df['ScreenX']
-        obs_y = observation_df['ScreenY']
+            # Extract instruction and observation points
+            inst_time = instruction_df['Time']
+            inst_x = instruction_df['GameX']
+            inst_y = instruction_df['GameY']
+            obs_time = observation_df['Time_sec']
+            obs_x = observation_df['ScreenX']
+            obs_y = observation_df['ScreenY']
 
-        animate_points(hit_time, hit_x, hit_y, inst_time, inst_x, inst_y, obs_time, obs_x, obs_y, filename)
+            animate_points(hit_time, hit_x, hit_y, inst_time, inst_x, inst_y, obs_time, obs_x, obs_y, filename)
