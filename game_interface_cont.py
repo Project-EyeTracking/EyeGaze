@@ -260,7 +260,7 @@ def game(camera_id=0, frame_width=640, frame_height=480, game_video_file_path=No
 
     # Load the interactive icon image
     try:
-        icon_image = pygame.image.load("icon.png").convert_alpha()
+        icon_image = pygame.image.load("assets/icon.png").convert_alpha()
         icon_image = pygame.transform.scale(icon_image, (obj_width, obj_height))
     except Exception as e:
         print("Error loading icon.png, falling back to red rectangle.")
