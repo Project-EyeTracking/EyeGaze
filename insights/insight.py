@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import json
 import time
-
-
+import sys
 
 WD = os.getcwd()
 #WD += "\EyeGaze"
@@ -34,7 +33,8 @@ def main(filename):
     processedcsv = "processed_coordinates_"+filename+".csv"
 
     instruction_df = pd.read_csv(f"{WD}\output\game_csv\{gamecsv}")    # need to be configured later
-    observation_df = pd.read_csv(f"{WD}\output\processed_csv\{processedcsv}")
+    #observation_df = pd.read_csv(f"{WD}\output\processed_csv\{processedcsv}")    #uses un smoothed
+    observation_df = pd.read_csv(f"{WD}\insights\smoothed_coord\{processedcsv}")
 
     time_levels = 3    # vgoof, good, ok, 
     time_window = .10  # time_period of a time level, if the    
@@ -109,7 +109,10 @@ def main(filename):
 
     logs = {"accuracy":accuracy,"latency":avg_latency} 
      
-    with open(f"{WD}\insights\\accuracy_latency\{filename}.json", "w") as f:
+    #with open(f"{WD}\insights\\accuracy_latency\{filename}.json", "w") as f:
+        #json.dump(logs, f)
+
+    with open(f"{WD}\insights\\accuracy_latency_2\{filename}.json", "w") as f:
         json.dump(logs, f)
         
 
@@ -178,7 +181,8 @@ def animate_points(hit_time, hit_x, hit_y, inst_time, inst_x, inst_y, obs_time, 
                     metadata=dict(artist='Me'), 
                     bitrate=2000,    # Increase the bitrate for better quality
                     extra_args=['-vcodec', 'libx264'])  # Use the high-quality codec)
-    ani.save(f"{WD}/insights/video_plots/{filename}.mp4", writer=writer)
+    #ani.save(f"{WD}/insights/video_plots/{filename}.mp4", writer=writer)
+    ani.save(f"{WD}/insights/video_plots_2/{filename}.mp4", writer=writer)
 
     #plt.show()
     plt.close()
@@ -188,7 +192,8 @@ if __name__ == "__main__":
     WD = os.getcwd()
 
     files = os.listdir(f"{WD}\output\game_csv")
-    already_processed =  os.listdir(f"{WD}\insights\\video_plots")
+    #already_processed =  os.listdir(f"{WD}\insights\\video_plots")
+    already_processed =  os.listdir(f"{WD}\insights\\video_plots_2")   #for smoothed data
 
     done = []
 
