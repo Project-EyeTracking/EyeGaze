@@ -1,8 +1,11 @@
+import json
 import os
 import pathlib
 import time
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -22,6 +25,12 @@ st.markdown(
 
     .centered-title {
         text-align: center;
+    }
+    .metric-description {
+        padding: 1rem;
+        background-color: #f0f2f6;
+        border-radius: 0.5rem;
+        margin: 1rem 0;
     }
 </style>
 """,
@@ -64,6 +73,71 @@ def save_uploaded_file(uploaded_file):
     with open(save_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     return save_path
+
+
+def get_metric_description(metric_name):
+    """Return user-friendly descriptions for metrics."""
+    descriptions = {
+        "Cross_Correlation_X": "This value shows how well your horizontal eye movements match the movement of the object in the game. "
+        "A value closer to 1 means you're better at following horizontal movements. "
+        "In the case of horizontal movement, ignore the Cross_Correlation_Y value, as it can be influenced by noise such as involuntary head movements or eye blinks.",
+        "Cross_Correlation_Y": "This value shows how well your vertical eye movements match the movement of the object in the game. "
+        "A value closer to 1 means you're better at following vertical movements. "
+        "In the case of vertical movement, ignore the Cross_Correlation_X value, as it can be influenced by noise such as involuntary head movements or eye blinks.",
+        "Gaze_Jitter": "This measures how steady your gaze is. "
+        "A value closer to 0 means your eyes are more stable when focusing on a point.",
+    }
+    return descriptions.get(metric_name, "")
+
+
+def normalize_jitter(jitter_value, screen_spec_path):
+    """Normalize jitter value using screen dimensions."""
+    try:
+        with open(screen_spec_path) as f:
+            data = json.load(f)
+            width_pixels = data.get("width_pixels", 0)
+            height_pixels = data.get("height_pixels", 0)
+
+        # Calculate max distance (screen diagonal)
+        max_distance = np.sqrt(width_pixels**2 + height_pixels**2)
+
+        # Normalize jitter
+        normalized_jitter = float(jitter_value) / max_distance
+        return normalized_jitter
+    except Exception as e:
+        st.error(f"Error normalizing jitter: {str(e)}")
+        return jitter_value
+
+
+def display_selected_metrics(metrics_dict):
+    """Display only selected metrics with descriptions."""
+    selected_metrics = ["Cross_Correlation_X", "Cross_Correlation_Y", "Gaze_Jitter"]
+
+    # Create DataFrame with only selected metrics
+    filtered_metrics = {k: v for k, v in metrics_dict["metrics"].items() if k in selected_metrics}
+
+    # Normalize Gaze_Jitter
+    if "Gaze_Jitter" in filtered_metrics:
+        screen_spec_path = pathlib.Path.cwd() / "calibration" / "screen_spec.json"
+        filtered_metrics["Gaze_Jitter"] = normalize_jitter(
+            filtered_metrics["Gaze_Jitter"], screen_spec_path
+        )
+
+    metrics_df = pd.DataFrame([filtered_metrics]).T
+    metrics_df.columns = ["Value"]
+
+    # Display metrics table
+    st.subheader("Key Metrics")
+    st.dataframe(metrics_df)
+
+    # Display descriptions
+    st.subheader("What do these numbers mean?")
+    for metric in selected_metrics:
+        st.markdown(f"**{metric.replace('_', ' ')}**")
+        st.markdown(
+            f"<div class='metric-description'>{get_metric_description(metric)}</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def main():
@@ -164,14 +238,9 @@ def main():
                             str(game_path), str(processed_path)
                         )
 
-                        # Display metrics
+                        # Display only selected metrics with descriptions
                         st.markdown("---")
-                        st.subheader("Analysis Metrics")
-                        metrics_df = pd.DataFrame([metrics["metrics"]]).T
-                        metrics_df.columns = ["Value"]
-                        st.dataframe(metrics_df)
-                        # Show metrics file location
-                        st.info("Metrics saved to: output/metrics")
+                        display_selected_metrics(metrics)
 
                         # Display plots
                         st.markdown("---")
