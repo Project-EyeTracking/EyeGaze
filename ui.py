@@ -160,7 +160,7 @@ def main():
                         processed_path = save_uploaded_file(processed_file)
 
                         # Generate and display plots
-                        figures, metrics = generate_insight_plots(
+                        figures, metrics, video_path = generate_insight_plots(
                             str(game_path), str(processed_path)
                         )
 
@@ -179,6 +179,15 @@ def main():
                         st.pyplot(figures)
                         plt.close(figures)
                         st.info("Metrics saved to: output/plot")
+
+                        # Display animation
+                        st.markdown("---")
+                        st.subheader("Gaze Tracking Animation")
+                        if os.path.exists(video_path):
+                            st.video(video_path)
+                            st.info("Animation saved to: output/output_video")
+                        else:
+                            st.error("Animation file not generated successfully")
 
                         # Clean up temp files
                         for path in [game_path, processed_path]:

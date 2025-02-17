@@ -1,6 +1,7 @@
 import json
 import pathlib
 
+import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -8,6 +9,21 @@ from filterpy.kalman import KalmanFilter
 from scipy.signal import savgol_filter
 from scipy.spatial.distance import euclidean
 from scipy.stats import pearsonr
+
+
+def load_constants(json_file_path):
+
+    global WIDTH_PIXELS, HEIGHT_PIXELS
+
+    try:
+        with open(json_file_path) as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"Error reading JSON file: {e}")
+        return
+
+    WIDTH_PIXELS = data.get("width_pixels", 0)
+    HEIGHT_PIXELS = data.get("height_pixels", 0)
 
 
 def load_data(file1, file2):
@@ -93,7 +109,7 @@ def apply_smoothing(x, y, method="moving_average", **kwargs):
 def plot_coordinates(game_coords, processed_coords, smoothed_coords, title):
     """Create and display the coordinate plot."""
     fig = plt.figure(figsize=(8, 10))
-    gs = fig.add_gridspec(3, 1)
+    gs = fig.add_gridspec(2, 1)
 
     # Extract coordinates
     game_x, game_y = game_coords
@@ -105,42 +121,101 @@ def plot_coordinates(game_coords, processed_coords, smoothed_coords, title):
 
     # Plot X coordinates over time
     ax1 = fig.add_subplot(gs[0, 0])
-    ax1.plot(time, game_x, "b-", label="Game Data", alpha=0.8)
-    ax1.plot(time, smooth_x, "g--", label="Smoothed Data", alpha=0.8)
+    ax1.plot(time, game_x, "b-", label="Game Position", alpha=0.8)
+    ax1.plot(time, smooth_x, "g--", label="Gaze Position (Smoothed)", alpha=0.8)
     ax1.set_xlabel("Frame Number")
     ax1.set_ylabel("X Coordinate")
     ax1.set_title("X Coordinates Over Time")
     ax1.grid(True)
     ax1.legend()
+    ax1.invert_yaxis()
 
     # Plot Y coordinates over time
     ax2 = fig.add_subplot(gs[1, 0])
-    ax2.plot(time, game_y, "b-", label="Game Data", alpha=0.8)
-    ax2.plot(time, smooth_y, "g--", label="Smoothed Data", alpha=0.8)
+    ax2.plot(time, game_y, "b-", label="Game Position", alpha=0.8)
+    ax2.plot(time, smooth_y, "g--", label="Gaze Position (Smoothed)", alpha=0.8)
     ax2.set_xlabel("Frame Number")
     ax2.set_ylabel("Y Coordinate")
     ax2.set_title("Y Coordinates Over Time")
     ax2.grid(True)
     ax2.legend()
+    ax2.invert_yaxis()
 
-    # Plot X-Y trajectory
-    ax3 = fig.add_subplot(gs[2, 0])
-    ax3.plot(game_x, game_y, "b-", label="Game Data", alpha=0.8)
-    ax3.plot(smooth_x, smooth_y, "g--", label="Smoothed Data", alpha=0.8)
-    # plt.scatter(x1, y1, label='Processed Data', marker='x', alpha=0.8)
-    ax3.set_xlabel("X Coordinate")
-    ax3.set_ylabel("Y Coordinate")
-    ax3.set_title("X-Y Trajectory")
-    ax3.grid(True)
-    ax3.legend()
-    ax3.invert_yaxis()
+    # # Plot X-Y trajectory
+    # ax3 = fig.add_subplot(gs[2, 0])
+    # ax3.plot(game_x, game_y, "b-", label="Game Data", alpha=0.8)
+    # ax3.plot(smooth_x, smooth_y, "g--", label="Smoothed Data", alpha=0.8)
+    # # plt.scatter(x1, y1, label='Processed Data', marker='x', alpha=0.8)
+    # ax3.set_xlabel("X Coordinate")
+    # ax3.set_ylabel("Y Coordinate")
+    # ax3.set_title("X-Y Trajectory")
+    # ax3.grid(True)
+    # ax3.legend()
+    # ax3.invert_yaxis()
 
     # Adjust layout
     plt.tight_layout()
     plot_path = f"output/plot/trajectory_plot_{title}.png"
     plt.savefig(plot_path, dpi=300, bbox_inches="tight")
+    # plt.show()
 
     return fig
+
+
+def animate_points(game_coords, processed_coords, timestamp):
+    """Create animation of game coordinates and processed coordinates."""
+
+    fig, ax = plt.subplots()
+    ax.set_xlim(0, WIDTH_PIXELS)
+    ax.set_ylim(0, HEIGHT_PIXELS)
+
+    game_x, game_y = game_coords
+    proc_x, proc_y = processed_coords
+
+    # Plot instruction points (game coordinates)
+    (game_line,) = ax.plot([], [], "ro", label="Game Position")
+
+    # Plot observation points (processed coordinates)
+    (proc_line,) = ax.plot([], [], "bo", label="Gaze Position (Smoothed)", alpha=0.5)
+
+    def init():
+        game_line.set_data([], [])
+        proc_line.set_data([], [])
+        return game_line, proc_line
+
+    def update(frame):
+        # Update points up to current frame
+        game_line.set_data(game_x[:frame], game_y[:frame])
+        proc_line.set_data(proc_x[:frame], proc_y[:frame])
+        return game_line, proc_line
+
+    # Create animation using the number of frames in the data
+    n_frames = len(game_x)
+    ani = animation.FuncAnimation(
+        fig, update, frames=range(n_frames), init_func=init, blit=True, interval=33.3
+    )
+
+    # Add legend
+    ax.legend()
+    ax.invert_yaxis()
+    ax.set_title("Gaze Tracking Trajectory")
+    ax.set_xlabel("X Coordinate")
+    ax.set_ylabel("Y Coordinate")
+    ax.grid(True)
+
+    # Save the animation as a video file
+    Writer = animation.writers["ffmpeg"]
+    writer = Writer(
+        fps=30, metadata=dict(artist="EyeTracker"), bitrate=2000, extra_args=["-vcodec", "libx264"]
+    )
+
+    video_dir = pathlib.Path("output/output_video/")
+    video_dir.mkdir(parents=True, exist_ok=True)
+    video_path = f"{video_dir}/trajectory_video_{timestamp}.mp4"
+
+    ani.save(video_path, writer=writer)
+    plt.close()
+    return video_path
 
 
 def compute_metrics(game_coords, smoothed_coords, timestamp):
@@ -211,6 +286,8 @@ def save_metrics(metrics, output_dir="output/metrics"):
 
 def generate_insight_plots(file1, file2):
 
+    load_constants("calibration/screen_spec.json")
+
     timestamp = str(file1).split("_")[-1][:-4]
 
     game_coords, processed_coords = load_data(file1, file2)
@@ -225,8 +302,9 @@ def generate_insight_plots(file1, file2):
 
     # Generate plots
     figures = plot_coordinates(game_coords, processed_coords, smoothed_coords, timestamp)
+    video_path = animate_points(game_coords, smoothed_coords, timestamp)
 
-    return figures, metrics
+    return figures, metrics, video_path
 
 
 if __name__ == "__main__":

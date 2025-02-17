@@ -5,8 +5,20 @@ from collections import defaultdict
 
 import numpy as np
 
-WIDTH_PIXELS = 2560
-HEIGHT_PIXELS = 1440
+
+def load_constants(json_file_path):
+
+    global WIDTH_PIXELS, HEIGHT_PIXELS
+
+    try:
+        with open(json_file_path) as f:
+            data = json.load(f)
+    except Exception as e:
+        print(f"Error reading JSON file: {e}")
+        return
+
+    WIDTH_PIXELS = data.get("width_pixels", 0)
+    HEIGHT_PIXELS = data.get("height_pixels", 0)
 
 
 def calculate_metrics_statistics(directory_path, output_file):
@@ -85,6 +97,9 @@ def calculate_metrics_statistics(directory_path, output_file):
 
 # Example usage
 if __name__ == "__main__":
+
+    load_constants("calibration/screen_spec.json")
+
     # Replace with your directory path containing JSON files
     directory_path = "output/metrics/horizontal"
     output_file = "output/metrics/metrics_horizontal_average.json"
