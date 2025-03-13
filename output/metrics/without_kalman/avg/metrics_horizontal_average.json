@@ -1,0 +1,38 @@
+{
+    "number_of_files_processed": 10,
+    "screen_resolution": {
+        "width": 2560,
+        "height": 1440,
+        "diagonal": 2937.21
+    },
+    "metrics_statistics": {
+        "MAE": {
+            "mean": 797.986,
+            "std_dev": 345.8131
+        },
+        "RMSE": {
+            "mean": 680.058,
+            "std_dev": 239.5549
+        },
+        "Cross_Correlation_X": {
+            "mean": 0.923,
+            "std_dev": 0.0597
+        },
+        "Cross_Correlation_Y": {
+            "mean": 0.267,
+            "std_dev": 0.3565
+        },
+        "Gaze_Jitter": {
+            "mean": 47639.641,
+            "std_dev": 29259.8038
+        },
+        "Gaze_Drift": {
+            "mean": 525.352,
+            "std_dev": 260.5118
+        },
+        "Normalized_Gaze_Jitter": {
+            "mean": 16.2194,
+            "std_dev": 9.9618
+        }
+    }
+}

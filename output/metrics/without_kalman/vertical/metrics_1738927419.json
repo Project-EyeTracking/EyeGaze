@@ -1,0 +1,11 @@
+{
+    "timestamp": "1738927419",
+    "metrics": {
+        "MAE": 588.54,
+        "RMSE": 508.92,
+        "Cross_Correlation_X": 0.16,
+        "Cross_Correlation_Y": 0.78,
+        "Gaze_Jitter": 59521.07,
+        "Gaze_Drift": 272.03
+    }
+}
