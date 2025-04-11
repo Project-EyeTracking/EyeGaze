@@ -26,7 +26,7 @@ Install the required packages using the `requirements.txt` file and download the
 
 ```python
 # To launch the game for video capture run
-python game_interface_cont.py
+python game_interface.py
 ```
 
 ```python
@@ -53,11 +53,11 @@ python inference.py --cam 0
 
 The results of experiment conducted on seven participants are presented in the following table:
 
-| Metric        | Horizontal    | Vertical      | Diagonal      |
-| ------------- | ------------- | ------------- | ------------- |
-| Correlation X | 0.973 ± 0.01  | 0.587 ± 0.26  | 0.945 ± 0.03  |
-| Correlation Y | 0.339 ± 0.46  | 0.845 ± 0.05  | 0.8267 ± 0.13 |
-| Gaze Jitter   | 0.1318 ± 0.06 | 0.1109 ± 0.08 | 0.212 ± 0.16  |
+| Metric        | Horizontal  | Vertical    | Diagonal    |
+| ------------- | ----------- | ----------- | ----------- |
+| Correlation X | 0.97 ± 0.01 | 0.58 ± 0.26 | 0.94 ± 0.03 |
+| Correlation Y | 0.33 ± 0.46 | 0.84 ± 0.05 | 0.83 ± 0.13 |
+| Gaze Jitter   | 0.13 ± 0.06 | 0.11 ± 0.08 | 0.21 ± 0.16 |
 
 Plot depicting actual movement of object in game and predicted gaze trajectory in x and y axis
 

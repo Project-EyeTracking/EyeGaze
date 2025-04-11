@@ -96,15 +96,13 @@ def setup_screen():
         title = font.render("Select Movement and Speed", True, BLACK)
         screen.blit(title, (center_x - title.get_width() // 2, 50))
 
-        
-
         pygame.draw.rect(
             screen,
             GRAY if selected_movement == "Horizontal" else WHITE,
             (center_x - 225, movement_y_start, button_width, button_height),
         )
         horizontal_text = font.render("Horizontal", True, BLACK)
-        screen.blit(horizontal_text, (center_x - 225+ 20, movement_y_start + 10))
+        screen.blit(horizontal_text, (center_x - 225 + 20, movement_y_start + 10))
 
         pygame.draw.rect(
             screen,
@@ -165,7 +163,7 @@ def setup_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
                 # Movement type selection
-                
+
                 if (
                     center_x - 75 <= x <= center_x - 75 + button_width
                     and movement_y_start <= y <= movement_y_start + button_height
@@ -245,7 +243,6 @@ def game(camera_id=0, frame_width=640, frame_height=480, game_video_file_path=No
         moving_down = True
         horizontal_shift_remaining = 0
         shift_right = True
-    
 
     # Load the interactive icon image
     try:
