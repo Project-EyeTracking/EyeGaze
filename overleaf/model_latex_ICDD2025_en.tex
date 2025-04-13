@@ -188,7 +188,7 @@ where \( \mathbf{F} \) is the state transition matrix defined as:
 \end{bmatrix}
 \end{equation}
 
-with \( \Delta t = \frac{1}{\text{FPS}} \;\text{s} \). The process noise \( \mathbf{w}_k \) accounts for small random variations in motion. The Kalman filter updates its estimates using the measurement model, which includes only two components, \( x \) and \( y \), corresponding to the observed gaze positions from equation (\ref{eq3}).
+with \( \Delta t = \frac{1}{\text{FPS}} \;\text{s} \), with FPS denoting the number of frames per second. The process noise \( \mathbf{w}_k \) accounts for small random variations in motion. The Kalman filter updates its estimates using the measurement model, which includes only two components, \( x \) and \( y \), corresponding to the observed gaze positions from equation (\ref{eq3}).
 
 \begin{equation}
 \label{eq7}
@@ -276,7 +276,12 @@ Figure~\ref{fig:plot} illustrates the trajectory of the object in the game along
 
 Additionally, the results show that for horizontal object movement, tracking accuracy is higher along the x-axis, while deviations occur along the y-axis. Conversely, for vertical object movement, tracking is more accurate along the y-axis, with greater deviations in the x-axis. These deviations may be attributed to slight changes in head orientation or involuntary eye blinks, which are difficult to control.
 
-Table \ref{metr} provides a comprehensive summary of the experimental data. It details the mean values and the associated standard deviations for the correlations along the x and y axes. In addition, the table includes the normalised gaze jitter. The data represent the averages computed from seven participants over ten experimental trials. High correlation values in the x-direction for horizontal object movement and in the y-direction for vertical object movement, along with overall low jitter, suggest that the tracking performance aligns with the expected results for the typical population. The data presented in Table ~\ref{metr} can be used as a baseline for comparison. When the tool is applied to children with special needs, individual performance can be evaluated using Z-scores, which indicate how many standard deviations a specific data point is from the population mean. For example, if the mean y-axis correlation for the diagonal movement is $0.83$ with a standard deviation of $0.13$, and a child’s score is $-0.37$, the Z-score is computed as \( Z = \frac{X - \mu}{\sigma} = \frac{-0.37 - 0.83}{0.13} = -9.23 \). This indicates that the child’s performance is nine standard deviations below the typical mean, suggesting a potential difficulty in horizontal tracking. Such quantifiable comparisons enable tracking of a child’s progress over time, allowing for the refinement of interventions and personalised therapeutic strategies.
+Table \ref{metr} provides a comprehensive summary of the experimental data. It details the mean values and the associated standard deviations for the correlations along the x and y axes. In addition, the table includes the normalised gaze jitter. The data represent the averages computed from seven participants over ten experimental trials. High correlation values in the x-direction for horizontal object movement and in the y-direction for vertical object movement, along with overall low jitter, suggest that the tracking performance aligns with the expected results for the typical population. The data presented in Table ~\ref{metr} can be used as a baseline for comparison. When the tool is applied to children with special needs, individual performance can be evaluated using Z scores, which indicate how many standard deviations a specific data point is from the population mean. For example, if the mean y-axis correlation ($\mu$) for the diagonal movement is $0.83$ with a standard deviation ($\sigma$) of $0.13$, and a child’s score ($X$) is $-0.37$, the Z-score is computed as,
+\begin{equation}
+     Z = \frac{X - \mu}{\sigma} = \frac{-0.37 - 0.83}{0.13} = -9.23
+\end{equation}
+
+This indicates that the child’s performance is nine standard deviations below the typical mean, suggesting a potential difficulty in horizontal tracking. Such quantifiable comparisons enable tracking of a child’s progress over time, allowing for the refinement of interventions and personalised therapeutic strategies.
 
 \begin{table}[h!]
     \centering
